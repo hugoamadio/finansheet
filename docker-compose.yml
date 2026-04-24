@@ -1,0 +1,56 @@
+# docker-compose.yml — EXCLUSIVO PRA DESENVOLVIMENTO.
+#
+# Sobe:
+#   - db:  container Postgres persistente (volume nomeado)
+#   - app: builda o Dockerfile (target=development) e sobe o Rails
+#          com hot reload via bind mount do código.
+#
+# Todas as credenciais/valores vêm do .env via `env_file:` — o Dockerfile
+# e este arquivo NÃO contêm nenhum segredo ou valor de banco.
+#
+# Uso:
+#   docker compose up --build
+
+services:
+  db:
+    image: postgres:16-alpine
+    env_file: .env
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      # Host:container — HOST vem de POSTGRES_HOST_PORT pra permitir
+      # múltiplos projetos Postgres na mesma máquina sem colisão. A porta
+      # do container continua POSTGRES_PORT (o que o Rails conecta via DNS).
+      - "${POSTGRES_HOST_PORT}:${POSTGRES_PORT}"
+    healthcheck:
+      # $$ escapa a interpolação do compose pra variável resolver no shell
+      # do container.
+      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  app:
+    build:
+      context: .
+      target: development
+    env_file: .env
+    ports:
+      - "${PORT}:${PORT}"
+    volumes:
+      # Bind mount do código — é o que habilita hot reload.
+      - .:/rails
+      # Volume nomeado pros gems — sobrevive entre restarts, não colide
+      # com o mount do código em /rails (BUNDLE_PATH=/usr/local/bundle).
+      - bundle_cache:/usr/local/bundle
+    depends_on:
+      db:
+        condition: service_healthy
+    command: >
+      bash -c "bundle install &&
+               bin/rails db:prepare &&
+               bin/rails server -b 0.0.0.0 -p ${PORT}"
+
+volumes:
+  postgres_data:
+  bundle_cache:

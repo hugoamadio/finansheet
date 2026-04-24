@@ -1,0 +1,42 @@
+# PostgreSQL. Versions 9.3 and up are supported.
+#
+# Ensure the pg gem is defined in your Gemfile
+#   gem "pg"
+#
+# Todas as credenciais vêm do .env — nenhum valor hardcoded aqui.
+default: &default
+  adapter: postgresql
+  encoding: unicode
+  pool: <%= ENV.fetch("RAILS_MAX_THREADS") { 5 } %>
+  host: <%= ENV.fetch("POSTGRES_HOST") %>
+  port: <%= ENV.fetch("POSTGRES_PORT") %>
+  username: <%= ENV.fetch("POSTGRES_USER") %>
+  password: <%= ENV.fetch("POSTGRES_PASSWORD") %>
+
+development:
+  <<: *default
+  database: <%= ENV.fetch("POSTGRES_DB") %>
+
+# Warning: The database defined as "test" will be erased and
+# re-generated from your development database when you run "rake".
+# Do not set this db to the same as development or production.
+test:
+  <<: *default
+  database: <%= ENV.fetch("POSTGRES_DB") %>_test
+
+production:
+  primary:
+    <<: *default
+    database: <%= ENV.fetch("POSTGRES_DB") %>
+  cache:
+    <<: *default
+    database: <%= ENV.fetch("POSTGRES_DB") %>_cache
+    migrations_paths: db/cache_migrate
+  queue:
+    <<: *default
+    database: <%= ENV.fetch("POSTGRES_DB") %>_queue
+    migrations_paths: db/queue_migrate
+  cable:
+    <<: *default
+    database: <%= ENV.fetch("POSTGRES_DB") %>_cable
+    migrations_paths: db/cable_migrate
