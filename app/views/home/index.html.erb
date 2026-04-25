@@ -18,6 +18,12 @@
     <button type="button" class="month-nav__close-cycle" data-action="cards#openCloseCycle" data-cards-target="closeCycleButton">Virar Mês</button>
   </nav>
 
+  <div class="page-notice" data-cards-target="notice" hidden>
+    <span data-cards-target="noticeText"></span>
+    <button type="button" class="page-notice__action" data-action="cards#followNotice" data-cards-target="noticeAction" hidden></button>
+    <button type="button" class="page-notice__close" data-action="cards#dismissNotice" aria-label="Fechar">×</button>
+  </div>
+
   <div class="cards-grid" data-cards-target="grid">
     <div class="cards-grid__loading" data-cards-target="loading">
       <span class="spinner"></span> Carregando cartões…

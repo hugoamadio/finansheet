@@ -19,6 +19,7 @@ export default class extends Controller {
     "purchaseFieldDate", "purchasePreview",
     "monthLabel", "prevButton", "closedTag", "closeCycleButton",
     "closeCycleModal", "closeCycleMonth", "closeCycleSummary", "closeCycleConfirm",
+    "notice", "noticeText", "noticeAction",
   ]
 
   connect() {
@@ -373,19 +374,22 @@ export default class extends Controller {
 
       this.closePurchase()
 
-      // Pula pro mês da 1ª parcela se caiu em mês diferente do que está vendo
-      // (regra do best_day: compra antes/no best_day → próximo mês; depois → 2 meses).
-      // Senão, só refresca o card afetado.
+      // Refresca SÓ o card afetado, sem mexer no mês visualizado
+      // (preserva o contexto dos outros cards). Se a 1ª parcela caiu em outro
+      // mês, mostra notice com atalho pra navegar até lá.
       const data = await resp.json().catch(() => ({}))
       const firstDue = data.purchase?.installments?.[0]?.due_month
       const targetMonth = firstDue ? parseYMD(firstDue) : null
 
+      await this.loadInstallments(cardId)
+
       if (targetMonth && !sameMonth(targetMonth, this.currentMonth)) {
-        this.currentMonth = targetMonth
-        writeMonthToURL(targetMonth)
-        await this.loadCards({ withFade: true })
+        this.showNotice({
+          text: `Lançamento criado · primeira parcela em ${formatMonthLabel(targetMonth)}.`,
+          action: { label: `Ver ${formatMonthLabel(targetMonth)}`, month: targetMonth },
+        })
       } else {
-        await this.loadInstallments(cardId)
+        this.showNotice({ text: `Lançamento criado.`, autoHideMs: 3500 })
       }
     } catch (err) {
       console.error("[cards] purchase failed", err)
@@ -400,6 +404,41 @@ export default class extends Controller {
     this.purchaseSubmitTarget.innerHTML = flag
       ? `<span class="spinner"></span> Lançando…`
       : `Lançar`
+  }
+
+  // ---- Notice (toast inline) ----
+
+  showNotice({ text, action = null, autoHideMs = null }) {
+    if (this.noticeHideTimer) clearTimeout(this.noticeHideTimer)
+
+    this.noticeTextTarget.textContent = text
+    if (action) {
+      this.noticeActionTarget.textContent = action.label
+      this.noticeActionTarget.dataset.targetMonth = formatYMD(action.month)
+      this.noticeActionTarget.hidden = false
+    } else {
+      this.noticeActionTarget.hidden = true
+      delete this.noticeActionTarget.dataset.targetMonth
+    }
+    this.noticeTarget.hidden = false
+
+    if (autoHideMs) {
+      this.noticeHideTimer = setTimeout(() => this.dismissNotice(), autoHideMs)
+    }
+  }
+
+  dismissNotice() {
+    if (this.noticeHideTimer) clearTimeout(this.noticeHideTimer)
+    this.noticeTarget.hidden = true
+  }
+
+  followNotice() {
+    const ymd = this.noticeActionTarget.dataset.targetMonth
+    if (!ymd) return
+    this.currentMonth = parseYMD(ymd)
+    writeMonthToURL(this.currentMonth)
+    this.dismissNotice()
+    this.loadCards({ withFade: true })
   }
 
   // ---- Render ----
