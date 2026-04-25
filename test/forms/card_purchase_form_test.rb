@@ -58,14 +58,14 @@ class CardPurchaseFormTest < ActiveSupport::TestCase
     assert_equal Date.new(2026, 4, 1), form.card_purchase.installments.first.due_month
   end
 
-  test "purchase AFTER best_day goes to next month" do
+  test "purchase always lands on the month it was made" do
     form = CardPurchaseForm.new(
       user: @user, card: @card, description: "X",
       total_amount: 100, installments_count: 1,
-      purchased_on: Date.new(2026, 4, 30), # após best_day=29 → próxima fatura
+      purchased_on: Date.new(2026, 4, 30), # após best_day, mas o mês da compra é abril
     )
     assert form.save
-    assert_equal Date.new(2026, 5, 1), form.card_purchase.installments.first.due_month
+    assert_equal Date.new(2026, 4, 1), form.card_purchase.installments.first.due_month
   end
 
   test "single-installment purchase creates 1 installment with full amount" do

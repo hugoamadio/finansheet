@@ -61,13 +61,8 @@ class CardPurchaseForm
   end
 
   def first_due_month
-    base = Date.new(purchased_on.year, purchased_on.month, 1)
-    # compra <= best_day → fatura corrente (mesmo mês);
-    # compra >  best_day → próxima fatura (mês seguinte).
-    if purchased_on.day <= card.best_day
-      base
-    else
-      base >> 1
-    end
+    # 1ª parcela cai sempre no mês da compra. best_day fica como
+    # informação visual/lembrete, sem afetar onde a parcela aparece.
+    Date.new(purchased_on.year, purchased_on.month, 1)
   end
 end
