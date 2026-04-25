@@ -306,9 +306,13 @@ export default class extends Controller {
         return
       }
 
+      // pula pro mês da primeira parcela pra o user ver o lançamento aparecer
+      const data = await resp.json().catch(() => ({}))
+      const firstDue = data.purchase?.installments?.[0]?.due_month
+      if (firstDue) this.currentMonth = parseYMD(firstDue)
+
       this.closePurchase()
-      // Fase C usa esse refresh pra repintar o card com novos itens
-      await this.loadCards()
+      await this.loadCards({ withFade: true })
     } catch (err) {
       console.error("[cards] purchase failed", err)
       alert("Erro ao lançar a compra.")
@@ -453,4 +457,9 @@ function formatYMD(date) {
 
 function formatMonthLabel(date) {
   return date.toLocaleDateString("pt-BR", { month: "long", year: "numeric" })
+}
+
+function parseYMD(str) {
+  const [y, m, d] = String(str).split("-").map((v) => parseInt(v, 10))
+  return new Date(y, (m || 1) - 1, d || 1)
 }
