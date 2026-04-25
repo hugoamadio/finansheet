@@ -1,7 +1,13 @@
 import { Controller } from "@hotwired/stimulus"
 
 // Página inicial: grid de cartões + CRUD via modal.
-// Padrão do projeto: lista vem de fetch após render (não server-render).
+// Padrão do projeto: lista vem de fetch após render.
+//
+// Loading em duas etapas:
+//   1) GET /api/cards            — metadata (id/name/banco/days) + flags do mês
+//   2) GET /api/cards/:id/installments?month=...  — por cartão, popula items+totais
+//
+// Estado do mês visualizado fica na URL (?month=YYYY-MM) pra sobreviver F5.
 export default class extends Controller {
   static targets = [
     "grid", "loading", "cardTemplate",
@@ -17,20 +23,18 @@ export default class extends Controller {
 
   connect() {
     this.cards = []
-    this.currentMonth = firstDayOfCurrentMonth()
+    this.installmentsByCard = {}
+    this.currentMonth = readMonthFromURL() ?? firstDayOfCurrentMonth()
     this.monthClosedAt = null
     this.hasEarlierData = false
     this.loadCards()
   }
 
-  // ---- API ----
+  // ---- API: cards (metadata + globals do mês) ----
 
   async loadCards({ withFade = false } = {}) {
-    if (withFade) {
-      this.gridTarget.classList.add("cards-grid--fading")
-    } else {
-      this.showLoading()
-    }
+    if (withFade) this.gridTarget.classList.add("cards-grid--fading")
+    else this.showLoading()
 
     try {
       const monthParam = formatYMD(this.currentMonth)
@@ -40,8 +44,11 @@ export default class extends Controller {
       this.cards = data.cards ?? []
       this.hasEarlierData = !!data.has_earlier_data
       this.monthClosedAt  = data.month_closed_at
+      this.installmentsByCard = {}
       this.render()
       this.renderMonthNav()
+      // dispara fetch das installments de cada cartão (em paralelo, sem esperar)
+      this.cards.forEach((c) => this.loadInstallments(c.id))
     } catch (err) {
       console.error("[cards] load failed", err)
       this.gridTarget.innerHTML = `<div class="cards-grid__empty">Erro carregando cartões.</div>`
@@ -50,16 +57,74 @@ export default class extends Controller {
     }
   }
 
-  // ---- Navegação de mês ----
+  // ---- API: installments por cartão (endpoint dedicado) ----
+
+  async loadInstallments(cardId) {
+    const cardEl = this.findCardEl(cardId)
+    if (!cardEl) return
+
+    cardEl.classList.add("card-item--loading-items")
+
+    try {
+      const monthParam = formatYMD(this.currentMonth)
+      const resp = await this.authFetch(`/api/cards/${cardId}/installments?month=${monthParam}`)
+      if (!resp.ok) throw new Error(`GET installments falhou: ${resp.status}`)
+      const data = await resp.json()
+      this.installmentsByCard[cardId] = data
+      this.applyInstallments(cardEl, data)
+    } catch (err) {
+      console.error(`[cards] installments load failed for ${cardId}`, err)
+      const itemsEl = cardEl.querySelector("[data-items]")
+      itemsEl.innerHTML = `<li style="opacity:0.7;font-style:italic;">Erro carregando lançamentos</li>`
+    } finally {
+      cardEl.classList.remove("card-item--loading-items")
+    }
+  }
+
+  applyInstallments(cardEl, data) {
+    const itemsEl = cardEl.querySelector("[data-items]")
+    itemsEl.innerHTML = ""
+
+    for (const inst of data.month_installments ?? []) {
+      const fraction = inst.installments_count === 1
+        ? "x1"
+        : `${inst.number}/${inst.installments_count}`
+
+      const li = document.createElement("li")
+      li.innerHTML = `
+        <span class="card-item__item-label">
+          ${escapeHtml(inst.description)}
+          <span class="card-item__item-installment">${fraction}</span>
+        </span>
+        <span class="card-item__item-amount">${formatBRL(inst.amount)}</span>
+      `
+      itemsEl.appendChild(li)
+    }
+
+    const moreEl = cardEl.querySelector("[data-more]")
+    if (data.month_installments_overflow) {
+      moreEl.textContent = `+${data.month_installments_overflow} parcela(s)`
+      moreEl.hidden = false
+    } else {
+      moreEl.hidden = true
+    }
+
+    cardEl.querySelector("[data-month-total]").textContent = formatBRL(data.month_total ?? 0)
+    cardEl.querySelector("[data-total-open]").textContent  = formatBRL(data.total_open  ?? 0)
+  }
+
+  // ---- Navegação de mês (URL state) ----
 
   prevMonth() {
     if (!this.hasEarlierData) return
     this.currentMonth = addMonths(this.currentMonth, -1)
+    writeMonthToURL(this.currentMonth)
     this.loadCards({ withFade: true })
   }
 
   nextMonth() {
     this.currentMonth = addMonths(this.currentMonth, 1)
+    writeMonthToURL(this.currentMonth)
     this.loadCards({ withFade: true })
   }
 
@@ -81,10 +146,13 @@ export default class extends Controller {
     this.closeCycleMonthTarget.textContent = formatMonthLabel(this.currentMonth)
 
     const lines = this.cards
-      .filter((c) => Number(c.month_total) > 0)
-      .map((c) => `<div style="display:flex;justify-content:space-between"><span>${escapeHtml(c.name || "—")}</span><strong>${formatBRL(c.month_total)}</strong></div>`)
+      .map((c) => ({ name: c.name, total: Number(this.installmentsByCard[c.id]?.month_total ?? 0) }))
+      .filter((row) => row.total > 0)
+      .map((row) => `<div style="display:flex;justify-content:space-between"><span>${escapeHtml(row.name || "—")}</span><strong>${formatBRL(row.total)}</strong></div>`)
 
-    const grandTotal = this.cards.reduce((sum, c) => sum + Number(c.month_total || 0), 0)
+    const grandTotal = this.cards.reduce(
+      (sum, c) => sum + Number(this.installmentsByCard[c.id]?.month_total ?? 0), 0
+    )
     const summary = lines.length === 0
       ? `<div style="opacity:0.7">Nenhum lançamento de cartão nesse mês.</div>`
       : lines.join("") + `<hr style="margin:0.5rem 0;border:none;border-top:1px solid #cbd5e1"><div style="display:flex;justify-content:space-between"><span>Total</span><strong>${formatBRL(grandTotal)}</strong></div>`
@@ -122,6 +190,8 @@ export default class extends Controller {
       this.closeCycleConfirmTarget.textContent = "Confirmar"
     }
   }
+
+  // ---- CRUD do cartão (modal create/edit) ----
 
   async submitForm(event) {
     event.preventDefault()
@@ -182,8 +252,6 @@ export default class extends Controller {
     }
   }
 
-  // ---- Modal: criar/editar ----
-
   openCreate() {
     this.resetForm()
     this.formTitleTarget.textContent = "Novo cartão"
@@ -233,7 +301,6 @@ export default class extends Controller {
     this.purchaseCardHeaderTarget.classList.remove("modal-purchase__card--credit", "modal-purchase__card--debit")
     this.purchaseCardHeaderTarget.classList.add(card.mode === "debit" ? "modal-purchase__card--debit" : "modal-purchase__card--credit")
 
-    // default: hoje + 1 parcela
     const today = new Date()
     this.purchaseFieldDateTarget.value = today.toISOString().slice(0, 10)
     this.purchaseFieldInstallmentsTarget.value = "1"
@@ -259,11 +326,9 @@ export default class extends Controller {
       return
     }
 
-    // mesmo split do CardPurchaseForm: floor(2) nas N-1, última absorve o resto
     const baseAmount = Math.floor((total / count) * 100) / 100
     const lastAmount = Math.round((total - baseAmount * (count - 1)) * 100) / 100
 
-    // due_month: se compra <= best_day → mês seguinte; senão → 2 meses depois
     const purchaseDate = new Date(dateStr + "T00:00:00")
     const day = purchaseDate.getDate()
     const offsetMonths = day <= card.best_day ? 1 : 2
@@ -306,13 +371,9 @@ export default class extends Controller {
         return
       }
 
-      // pula pro mês da primeira parcela pra o user ver o lançamento aparecer
-      const data = await resp.json().catch(() => ({}))
-      const firstDue = data.purchase?.installments?.[0]?.due_month
-      if (firstDue) this.currentMonth = parseYMD(firstDue)
-
       this.closePurchase()
-      await this.loadCards({ withFade: true })
+      // refresh APENAS do card afetado (sem recarregar todos os cards)
+      await this.loadInstallments(cardId)
     } catch (err) {
       console.error("[cards] purchase failed", err)
       alert("Erro ao lançar a compra.")
@@ -359,38 +420,20 @@ export default class extends Controller {
     node.querySelector("[data-pay-day]").textContent  = card.pay_day  ?? "—"
     node.querySelector("[data-best-day]").textContent = card.best_day ?? "—"
 
-    const itemsEl = node.querySelector("[data-items]")
-    const installments = card.month_installments ?? []
-    for (const inst of installments) {
-      const fraction = inst.installments_count === 1
-        ? "x1"
-        : `${inst.number}/${inst.installments_count}`
-
-      const li = document.createElement("li")
-      li.innerHTML = `
-        <span class="card-item__item-label">
-          ${escapeHtml(inst.description)}
-          <span class="card-item__item-installment">${fraction}</span>
-        </span>
-        <span class="card-item__item-amount">${formatBRL(inst.amount)}</span>
-      `
-      itemsEl.appendChild(li)
-    }
-
-    const moreEl = node.querySelector("[data-more]")
-    if (card.month_installments_overflow) {
-      moreEl.textContent = `+${card.month_installments_overflow} parcela(s)`
-      moreEl.hidden = false
-    }
-
-    node.querySelector("[data-month-total]").textContent = formatBRL(card.month_total ?? 0)
-    node.querySelector("[data-total-open]").textContent  = formatBRL(card.total_open  ?? 0)
+    // Items + totais ficam vazios — populados em loadInstallments(cardId)
+    node.querySelector("[data-items]").innerHTML = `<li style="opacity:0.5;font-style:italic;">Carregando…</li>`
+    node.querySelector("[data-month-total]").textContent = "—"
+    node.querySelector("[data-total-open]").textContent  = "—"
 
     return node
   }
 
   showLoading() {
     this.gridTarget.innerHTML = `<div class="cards-grid__loading"><span class="spinner"></span> Carregando cartões…</div>`
+  }
+
+  findCardEl(cardId) {
+    return this.gridTarget.querySelector(`.card-item[data-card-id="${cardId}"]`)
   }
 
   // ---- Helpers ----
@@ -459,7 +502,19 @@ function formatMonthLabel(date) {
   return date.toLocaleDateString("pt-BR", { month: "long", year: "numeric" })
 }
 
-function parseYMD(str) {
-  const [y, m, d] = String(str).split("-").map((v) => parseInt(v, 10))
-  return new Date(y, (m || 1) - 1, d || 1)
+function readMonthFromURL() {
+  const value = new URLSearchParams(window.location.search).get("month")
+  if (!value) return null
+  // aceita "YYYY-MM" ou "YYYY-MM-DD"
+  const [y, m] = value.split("-").map((v) => parseInt(v, 10))
+  if (!Number.isFinite(y) || !Number.isFinite(m)) return null
+  return new Date(y, m - 1, 1)
+}
+
+function writeMonthToURL(date) {
+  const y = date.getFullYear()
+  const m = String(date.getMonth() + 1).padStart(2, "0")
+  const url = new URL(window.location.href)
+  url.searchParams.set("month", `${y}-${m}`)
+  window.history.replaceState({}, "", url)
 }
