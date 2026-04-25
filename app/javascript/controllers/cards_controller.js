@@ -358,11 +358,15 @@ export default class extends Controller {
     const itemsEl = node.querySelector("[data-items]")
     const installments = card.month_installments ?? []
     for (const inst of installments) {
+      const fraction = inst.installments_count === 1
+        ? "x1"
+        : `${inst.number}/${inst.installments_count}`
+
       const li = document.createElement("li")
       li.innerHTML = `
         <span class="card-item__item-label">
           ${escapeHtml(inst.description)}
-          <span class="card-item__item-installment">${inst.number}/${inst.installments_count}</span>
+          <span class="card-item__item-installment">${fraction}</span>
         </span>
         <span class="card-item__item-amount">${formatBRL(inst.amount)}</span>
       `
