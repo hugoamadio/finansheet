@@ -62,10 +62,12 @@ class CardPurchaseForm
 
   def first_due_month
     base = Date.new(purchased_on.year, purchased_on.month, 1)
+    # compra <= best_day → fatura corrente (mesmo mês);
+    # compra >  best_day → próxima fatura (mês seguinte).
     if purchased_on.day <= card.best_day
-      base >> 1
+      base
     else
-      base >> 2
+      base >> 1
     end
   end
 end

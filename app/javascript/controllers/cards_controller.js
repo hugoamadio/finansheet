@@ -330,9 +330,11 @@ export default class extends Controller {
     const baseAmount = Math.floor((total / count) * 100) / 100
     const lastAmount = Math.round((total - baseAmount * (count - 1)) * 100) / 100
 
+    // compra <= best_day → fatura corrente (mesmo mês);
+    // compra >  best_day → próxima fatura (mês seguinte).
     const purchaseDate = new Date(dateStr + "T00:00:00")
     const day = purchaseDate.getDate()
-    const offsetMonths = day <= card.best_day ? 1 : 2
+    const offsetMonths = day <= card.best_day ? 0 : 1
     const firstDue = new Date(purchaseDate.getFullYear(), purchaseDate.getMonth() + offsetMonths, 1)
 
     const fmtMonth = (d) => d.toLocaleDateString("pt-BR", { month: "short", year: "2-digit" })

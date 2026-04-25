@@ -25,7 +25,7 @@ class CardPurchaseFormTest < ActiveSupport::TestCase
     assert_equal Date.new(2026, 4, 24), purchase.purchased_on
     assert_equal 8,                     purchase.installments.count
 
-    expected_due_months = (0..7).map { |i| Date.new(2026, 5, 1) >> i }
+    expected_due_months = (0..7).map { |i| Date.new(2026, 4, 1) >> i }
     assert_equal expected_due_months, purchase.installments.order(:number).pluck(:due_month)
 
     assert_equal [180] * 8, purchase.installments.order(:number).pluck(:amount).map(&:to_i)
@@ -48,24 +48,24 @@ class CardPurchaseFormTest < ActiveSupport::TestCase
     assert_equal 100.to_d, amounts.sum
   end
 
-  test "purchase ON best_day still goes to next month" do
+  test "purchase ON best_day stays in current month" do
     form = CardPurchaseForm.new(
       user: @user, card: @card, description: "X",
       total_amount: 100, installments_count: 1,
-      purchased_on: Date.new(2026, 4, 29), # exato best_day
+      purchased_on: Date.new(2026, 4, 29), # exato best_day → fatura corrente
+    )
+    assert form.save
+    assert_equal Date.new(2026, 4, 1), form.card_purchase.installments.first.due_month
+  end
+
+  test "purchase AFTER best_day goes to next month" do
+    form = CardPurchaseForm.new(
+      user: @user, card: @card, description: "X",
+      total_amount: 100, installments_count: 1,
+      purchased_on: Date.new(2026, 4, 30), # após best_day=29 → próxima fatura
     )
     assert form.save
     assert_equal Date.new(2026, 5, 1), form.card_purchase.installments.first.due_month
-  end
-
-  test "purchase AFTER best_day goes two months ahead" do
-    form = CardPurchaseForm.new(
-      user: @user, card: @card, description: "X",
-      total_amount: 100, installments_count: 1,
-      purchased_on: Date.new(2026, 4, 30), # após best_day=29
-    )
-    assert form.save
-    assert_equal Date.new(2026, 6, 1), form.card_purchase.installments.first.due_month
   end
 
   test "single-installment purchase creates 1 installment with full amount" do

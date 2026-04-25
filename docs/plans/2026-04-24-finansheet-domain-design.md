@@ -28,9 +28,10 @@ Esses dois conceitos **não estão acoplados**. Uma fatura de cartão pode ser d
 ### Regra do `due_month` da parcela
 
 Calculado **no momento da compra**, não recalculado depois.
+Reflete o ciclo de fatura aberta do cartão:
 
-- Compra **antes ou no** `best_day` → 1ª parcela com `due_month` = mês seguinte
-- Compra **depois** do `best_day` → 1ª parcela com `due_month` = dois meses depois
+- Compra **antes ou no** `best_day` → entra na **fatura corrente** (mesmo mês da compra)
+- Compra **depois** do `best_day` → entra na **próxima fatura** (mês seguinte)
 - Demais parcelas: `due_month` += 1 mês cada
 
 Editar `Card.best_day` afeta só compras futuras.
