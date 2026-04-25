@@ -2,8 +2,9 @@ class CardsController < ApiController
   before_action :load_card, only: [:update, :destroy]
 
   def index
+    month = parse_month(params[:month]) || Date.current.beginning_of_month
     cards = current_user.cards.order(:created_at)
-    render json: { cards: cards.map { |c| serialize(c) } }
+    render json: { month: month, cards: cards.map { |c| serialize_with_month(c, month) } }
   end
 
   def create
@@ -52,5 +53,43 @@ class CardsController < ApiController
       pay_day:  card.pay_day,
       best_day: card.best_day,
     }
+  end
+
+  ITEMS_LIMIT = 10
+
+  def serialize_with_month(card, month)
+    open_scope = Installment
+      .joins(:card_purchase)
+      .where(card_purchases: { card_id: card.id })
+      .where(cycle_id: nil)
+
+    month_scope = open_scope.where(due_month: month)
+
+    month_count   = month_scope.count
+    month_records = month_scope.order(due_month: :asc, number: :asc).limit(ITEMS_LIMIT).includes(:card_purchase)
+
+    serialize(card).merge(
+      month_total:        month_scope.sum(:amount).to_f,
+      total_open:         open_scope.sum(:amount).to_f,
+      month_installments: month_records.map { |i|
+        {
+          id:                 i.id,
+          number:             i.number,
+          installments_count: i.card_purchase.installments_count,
+          amount:             i.amount.to_f,
+          due_month:          i.due_month,
+          description:        i.card_purchase.description,
+        }
+      },
+      month_installments_overflow: [month_count - ITEMS_LIMIT, 0].max,
+    )
+  end
+
+  def parse_month(value)
+    return nil if value.blank?
+
+    Date.parse(value).beginning_of_month
+  rescue ArgumentError
+    nil
   end
 end

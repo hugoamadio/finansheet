@@ -265,6 +265,30 @@ export default class extends Controller {
     node.querySelector("[data-mode]").textContent = card.mode === "debit" ? "Débito" : "Crédito"
     node.querySelector("[data-pay-day]").textContent  = card.pay_day  ?? "—"
     node.querySelector("[data-best-day]").textContent = card.best_day ?? "—"
+
+    const itemsEl = node.querySelector("[data-items]")
+    const installments = card.month_installments ?? []
+    for (const inst of installments) {
+      const li = document.createElement("li")
+      li.innerHTML = `
+        <span class="card-item__item-label">
+          ${escapeHtml(inst.description)}
+          <span class="card-item__item-installment">${inst.number}/${inst.installments_count}</span>
+        </span>
+        <span class="card-item__item-amount">${formatBRL(inst.amount)}</span>
+      `
+      itemsEl.appendChild(li)
+    }
+
+    const moreEl = node.querySelector("[data-more]")
+    if (card.month_installments_overflow) {
+      moreEl.textContent = `+${card.month_installments_overflow} parcela(s)`
+      moreEl.hidden = false
+    }
+
+    node.querySelector("[data-month-total]").textContent = formatBRL(card.month_total ?? 0)
+    node.querySelector("[data-total-open]").textContent  = formatBRL(card.total_open  ?? 0)
+
     return node
   }
 
@@ -301,4 +325,19 @@ export default class extends Controller {
     }
     return fetch(url, { ...options, headers })
   }
+}
+
+function formatBRL(value) {
+  const n = Number(value)
+  if (!Number.isFinite(n)) return "R$ 0,00"
+  return n.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })
+}
+
+function escapeHtml(str) {
+  return String(str ?? "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;")
 }
