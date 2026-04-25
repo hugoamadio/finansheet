@@ -372,8 +372,21 @@ export default class extends Controller {
       }
 
       this.closePurchase()
-      // refresh APENAS do card afetado (sem recarregar todos os cards)
-      await this.loadInstallments(cardId)
+
+      // Pula pro mês da 1ª parcela se caiu em mês diferente do que está vendo
+      // (regra do best_day: compra antes/no best_day → próximo mês; depois → 2 meses).
+      // Senão, só refresca o card afetado.
+      const data = await resp.json().catch(() => ({}))
+      const firstDue = data.purchase?.installments?.[0]?.due_month
+      const targetMonth = firstDue ? parseYMD(firstDue) : null
+
+      if (targetMonth && !sameMonth(targetMonth, this.currentMonth)) {
+        this.currentMonth = targetMonth
+        writeMonthToURL(targetMonth)
+        await this.loadCards({ withFade: true })
+      } else {
+        await this.loadInstallments(cardId)
+      }
     } catch (err) {
       console.error("[cards] purchase failed", err)
       alert("Erro ao lançar a compra.")
@@ -500,6 +513,16 @@ function formatYMD(date) {
 
 function formatMonthLabel(date) {
   return date.toLocaleDateString("pt-BR", { month: "long", year: "numeric" })
+}
+
+function parseYMD(str) {
+  const [y, m] = String(str).split("-").map((v) => parseInt(v, 10))
+  if (!Number.isFinite(y) || !Number.isFinite(m)) return null
+  return new Date(y, m - 1, 1)
+}
+
+function sameMonth(a, b) {
+  return a && b && a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth()
 }
 
 function readMonthFromURL() {
