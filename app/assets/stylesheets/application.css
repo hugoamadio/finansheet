@@ -5,6 +5,8 @@
  */
 
 @import "sidebar.css";
+@import "modal.css";
+@import "cards.css";
 
 :root {
   --sidebar-width: 240px;
@@ -31,18 +33,7 @@ body {
 .app-content {
   margin-left: var(--sidebar-width);
   min-height: 100vh;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 2rem 1rem;
-}
-
-.home-title {
-  font-size: 3rem;
-  font-weight: 700;
-  color: #0f172a;
-  letter-spacing: -0.03em;
-  margin: 0;
+  padding: 2.5rem 2rem;
 }
 
 @media (max-width: 767px) {

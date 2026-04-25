@@ -11,6 +11,11 @@ Rails.application.routes.draw do
   post "auth"  => "auth#create",  as: :auth
   get  "me"    => "auth#show",    as: :me
 
+  # API JSON (chamada via fetch após render)
+  scope :api, defaults: { format: :json } do
+    resources :cards, only: [:index, :create, :update, :destroy]
+  end
+
   # App
   root "home#index"
 end

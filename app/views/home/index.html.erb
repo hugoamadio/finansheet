@@ -1,3 +1,89 @@
-<% content_for :title, "finansheet" %>
+<% content_for :title, "FinanSheet — Cartões" %>
 
-<h1 class="home-title">finansheet</h1>
+<section class="cards-page" data-controller="cards">
+  <header class="cards-page__header">
+    <h1 class="cards-page__title">Cartões</h1>
+    <button type="button" class="btn btn--primary" data-action="cards#openCreate">+ Novo cartão</button>
+  </header>
+
+  <div class="cards-grid" data-cards-target="grid">
+    <div class="cards-grid__loading" data-cards-target="loading">
+      <span class="spinner"></span> Carregando cartões…
+    </div>
+  </div>
+
+  <%# Template usado pra renderizar cada cartão (clonado via JS) %>
+  <template data-cards-target="cardTemplate">
+    <article class="card-item" data-card-id>
+      <div class="card-item__top">
+        <div>
+          <div class="card-item__name" data-name></div>
+          <div class="card-item__bank" data-bank></div>
+        </div>
+        <span class="card-item__mode-tag" data-mode></span>
+      </div>
+
+      <div class="card-item__days">
+        <div>
+          Vence dia
+          <span class="card-item__day-value" data-pay-day>—</span>
+        </div>
+        <div>
+          Fecha dia
+          <span class="card-item__day-value" data-best-day>—</span>
+        </div>
+      </div>
+
+      <div class="card-item__actions">
+        <button type="button" class="card-item__action card-item__action--primary" data-action="cards#openPurchase">Lançar compra</button>
+        <button type="button" class="card-item__action" data-action="cards#openEdit">Editar</button>
+        <button type="button" class="card-item__action" data-action="cards#remove">Remover</button>
+      </div>
+    </article>
+  </template>
+
+  <%# Modal de criar/editar cartão %>
+  <dialog class="modal" data-cards-target="formModal">
+    <header class="modal__header">
+      <h2 class="modal__title" data-cards-target="formTitle">Novo cartão</h2>
+      <button type="button" class="modal__close" data-action="cards#closeForm" aria-label="Fechar">×</button>
+    </header>
+    <form class="modal__body" data-cards-target="form" data-action="submit->cards#submitForm">
+      <input type="hidden" data-cards-target="formId">
+
+      <label class="form-field">
+        Nome do cartão
+        <input type="text" name="name" placeholder="Ex.: Nubank Platinum" required data-cards-target="fieldName">
+      </label>
+
+      <label class="form-field">
+        Banco
+        <input type="text" name="bank" placeholder="Ex.: Nubank" data-cards-target="fieldBank">
+      </label>
+
+      <label class="form-field">
+        Tipo
+        <select name="mode" required data-cards-target="fieldMode">
+          <option value="credit">Crédito</option>
+          <option value="debit">Débito</option>
+        </select>
+      </label>
+
+      <div class="form-row">
+        <label class="form-field">
+          Vence dia (1-31)
+          <input type="number" name="pay_day" min="1" max="31" data-cards-target="fieldPayDay">
+        </label>
+        <label class="form-field">
+          Fecha dia (1-31)
+          <input type="number" name="best_day" min="1" max="31" data-cards-target="fieldBestDay">
+        </label>
+      </div>
+
+      <div class="modal__footer" style="margin: 1rem -1.25rem -1.25rem; padding: 1rem 1.25rem;">
+        <button type="button" class="btn btn--ghost" data-action="cards#closeForm">Cancelar</button>
+        <button type="submit" class="btn btn--primary" data-cards-target="formSubmit">Salvar</button>
+      </div>
+    </form>
+  </dialog>
+</section>

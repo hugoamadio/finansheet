@@ -1,0 +1,174 @@
+/*
+ * Componente Card — listagem na home.
+ * Visual lembra cartão de crédito (gradiente, cantos arredondados, texto claro).
+ * Estado de loading e estado vazio também aqui.
+ */
+
+.cards-page {
+  width: 100%;
+  max-width: 1200px;
+}
+
+.cards-page__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 1.5rem;
+  gap: 1rem;
+}
+
+.cards-page__title {
+  font-size: 1.75rem;
+  font-weight: 700;
+  margin: 0;
+  letter-spacing: -0.02em;
+}
+
+.cards-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  gap: 1.25rem;
+}
+
+.cards-grid__loading,
+.cards-grid__empty {
+  text-align: center;
+  padding: 3rem 1rem;
+  color: #64748b;
+  font-size: 0.95rem;
+}
+
+/* === Card item === */
+
+.card-item {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  border-radius: 14px;
+  padding: 1.1rem 1.2rem;
+  min-height: 200px;
+  color: #f8fafc;
+  background: linear-gradient(135deg, #1e293b 0%, #334155 60%, #475569 100%);
+  box-shadow: 0 8px 18px -8px rgba(15, 23, 42, 0.4);
+}
+
+.card-item--credit {
+  background: linear-gradient(135deg, #1e3a8a 0%, #1d4ed8 50%, #6366f1 100%);
+}
+
+.card-item--debit {
+  background: linear-gradient(135deg, #064e3b 0%, #047857 50%, #10b981 100%);
+}
+
+.card-item__top {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 0.5rem;
+}
+
+.card-item__name {
+  font-size: 1.1rem;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+}
+
+.card-item__bank {
+  font-size: 0.78rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  opacity: 0.75;
+  margin-top: 0.15rem;
+}
+
+.card-item__mode-tag {
+  font-size: 0.7rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  padding: 0.2rem 0.55rem;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.18);
+  letter-spacing: 0.04em;
+}
+
+.card-item__days {
+  display: flex;
+  gap: 1.5rem;
+  margin-top: auto;
+  padding-top: 1.2rem;
+  font-size: 0.8rem;
+  opacity: 0.85;
+}
+
+.card-item__day-value {
+  display: block;
+  font-size: 1rem;
+  font-weight: 600;
+  margin-top: 0.15rem;
+}
+
+.card-item__actions {
+  display: flex;
+  gap: 0.4rem;
+  margin-top: 1rem;
+}
+
+.card-item__action {
+  flex: 1;
+  background: rgba(255, 255, 255, 0.12);
+  color: #f8fafc;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  padding: 0.5rem;
+  border-radius: 6px;
+  font-size: 0.82rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background-color 120ms;
+}
+
+.card-item__action:hover { background: rgba(255, 255, 255, 0.22); }
+
+.card-item__action--primary {
+  background: rgba(255, 255, 255, 0.92);
+  color: #0f172a;
+  font-weight: 600;
+}
+
+.card-item__action--primary:hover { background: #ffffff; }
+
+/* === Card vazio (placeholder pra criar) === */
+
+.card-item--add {
+  background: transparent;
+  border: 2px dashed #cbd5e1;
+  color: #64748b;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: border-color 120ms, color 120ms, background 120ms;
+}
+
+.card-item--add:hover {
+  border-color: var(--brand);
+  color: var(--brand);
+  background: rgba(37, 99, 235, 0.04);
+}
+
+.card-item--add__icon {
+  font-size: 2rem;
+  font-weight: 300;
+  line-height: 1;
+}
+
+.card-item--add__label {
+  margin-top: 0.5rem;
+  font-size: 0.95rem;
+  font-weight: 500;
+}
+
+/* App content needs to top-align now (was centered before) */
+.app-content--cards {
+  align-items: flex-start;
+  justify-content: stretch;
+  padding-top: 2.5rem;
+}
