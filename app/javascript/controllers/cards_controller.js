@@ -117,10 +117,16 @@ export default class extends Controller {
   // ---- Navegação de mês (URL state) ----
 
   prevMonth() {
-    if (!this.hasEarlierData) return
+    if (!this.canGoBack()) return
     this.currentMonth = addMonths(this.currentMonth, -1)
     writeMonthToURL(this.currentMonth)
     this.loadCards({ withFade: true })
+  }
+
+  // Pode voltar enquanto: estiver à frente do mês corrente do calendário,
+  // OU houver dados em meses anteriores ao visualizado.
+  canGoBack() {
+    return this.currentMonth > firstDayOfCurrentMonth() || this.hasEarlierData
   }
 
   nextMonth() {
@@ -131,7 +137,7 @@ export default class extends Controller {
 
   renderMonthNav() {
     this.monthLabelTarget.textContent = formatMonthLabel(this.currentMonth)
-    this.prevButtonTarget.disabled = !this.hasEarlierData
+    this.prevButtonTarget.disabled = !this.canGoBack()
 
     const closed = !!this.monthClosedAt
     this.closedTagTarget.hidden = !closed
