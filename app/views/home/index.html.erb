@@ -86,4 +86,50 @@
       </div>
     </form>
   </dialog>
+
+  <%# Modal de lançar compra (com mini-cartão no topo) %>
+  <dialog class="modal modal--purchase" data-cards-target="purchaseModal">
+    <header class="modal-purchase__card" data-cards-target="purchaseCardHeader">
+      <div class="modal-purchase__card-top">
+        <div>
+          <div class="modal-purchase__card-name" data-cards-target="purchaseCardName"></div>
+          <div class="modal-purchase__card-bank" data-cards-target="purchaseCardBank"></div>
+        </div>
+        <button type="button" class="modal-purchase__card-close" data-action="cards#closePurchase" aria-label="Fechar">×</button>
+      </div>
+      <div class="modal-purchase__card-meta" data-cards-target="purchaseCardMeta"></div>
+    </header>
+
+    <form class="modal__body" data-cards-target="purchaseForm" data-action="submit->cards#submitPurchase">
+      <input type="hidden" data-cards-target="purchaseCardId">
+
+      <label class="form-field">
+        Descrição
+        <input type="text" name="description" placeholder="Ex.: Celular novo" required data-cards-target="purchaseFieldDescription">
+      </label>
+
+      <div class="form-row">
+        <label class="form-field">
+          Valor total (R$)
+          <input type="number" step="0.01" min="0.01" name="total_amount" required data-cards-target="purchaseFieldTotal" data-action="input->cards#updatePurchasePreview">
+        </label>
+        <label class="form-field">
+          Parcelas
+          <input type="number" min="1" max="48" value="1" name="installments_count" required data-cards-target="purchaseFieldInstallments" data-action="input->cards#updatePurchasePreview">
+        </label>
+      </div>
+
+      <label class="form-field">
+        Data da compra
+        <input type="date" name="purchased_on" required data-cards-target="purchaseFieldDate" data-action="input->cards#updatePurchasePreview">
+      </label>
+
+      <div class="modal-purchase__preview" data-cards-target="purchasePreview" hidden></div>
+
+      <div class="modal__footer" style="margin: 1rem -1.25rem -1.25rem; padding: 1rem 1.25rem;">
+        <button type="button" class="btn btn--ghost" data-action="cards#closePurchase">Cancelar</button>
+        <button type="submit" class="btn btn--primary" data-cards-target="purchaseSubmit">Lançar</button>
+      </div>
+    </form>
+  </dialog>
 </section>

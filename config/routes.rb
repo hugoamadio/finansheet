@@ -13,7 +13,9 @@ Rails.application.routes.draw do
 
   # API JSON (chamada via fetch após render)
   scope :api, defaults: { format: :json } do
-    resources :cards, only: [:index, :create, :update, :destroy]
+    resources :cards, only: [:index, :create, :update, :destroy] do
+      resources :purchases, only: [:create], controller: "card_purchases"
+    end
   end
 
   # App

@@ -7,6 +7,10 @@ export default class extends Controller {
     "grid", "loading", "cardTemplate",
     "formModal", "formTitle", "form", "formId", "formSubmit",
     "fieldName", "fieldBank", "fieldMode", "fieldPayDay", "fieldBestDay",
+    "purchaseModal", "purchaseForm", "purchaseSubmit", "purchaseCardId",
+    "purchaseCardHeader", "purchaseCardName", "purchaseCardBank", "purchaseCardMeta",
+    "purchaseFieldDescription", "purchaseFieldTotal", "purchaseFieldInstallments",
+    "purchaseFieldDate", "purchasePreview",
   ]
 
   connect() {
@@ -119,10 +123,116 @@ export default class extends Controller {
     this.formModalTarget.close()
   }
 
+  // ---- Modal: lançar compra ----
+
   openPurchase(event) {
     const id = event.currentTarget.closest(".card-item").dataset.cardId
-    // Implementado na Fase B
-    alert(`Lançar compra no cartão ${id} — em breve.`)
+    const card = this.cards.find((c) => c.id === id)
+    if (!card) return
+
+    if (!card.best_day) {
+      alert("Esse cartão precisa de um dia de fechamento (best_day) antes de receber compras. Edite o cartão primeiro.")
+      return
+    }
+
+    this.purchaseFormTarget.reset()
+    this.purchaseCardIdTarget.value = card.id
+    this.purchaseCardNameTarget.textContent = card.name || "—"
+    this.purchaseCardBankTarget.textContent = card.bank || ""
+    this.purchaseCardMetaTarget.textContent = `Fecha dia ${card.best_day} · vence dia ${card.pay_day ?? "—"}`
+
+    this.purchaseCardHeaderTarget.classList.remove("modal-purchase__card--credit", "modal-purchase__card--debit")
+    this.purchaseCardHeaderTarget.classList.add(card.mode === "debit" ? "modal-purchase__card--debit" : "modal-purchase__card--credit")
+
+    // default: hoje + 1 parcela
+    const today = new Date()
+    this.purchaseFieldDateTarget.value = today.toISOString().slice(0, 10)
+    this.purchaseFieldInstallmentsTarget.value = "1"
+
+    this.updatePurchasePreview()
+    this.purchaseModalTarget.showModal()
+    this.purchaseFieldDescriptionTarget.focus()
+  }
+
+  closePurchase() {
+    this.purchaseModalTarget.close()
+  }
+
+  updatePurchasePreview() {
+    const total = parseFloat(this.purchaseFieldTotalTarget.value)
+    const count = parseInt(this.purchaseFieldInstallmentsTarget.value, 10)
+    const dateStr = this.purchaseFieldDateTarget.value
+    const cardId = this.purchaseCardIdTarget.value
+    const card = this.cards.find((c) => c.id === cardId)
+
+    if (!total || !count || count < 1 || !dateStr || !card?.best_day) {
+      this.purchasePreviewTarget.hidden = true
+      return
+    }
+
+    // mesmo split do CardPurchaseForm: floor(2) nas N-1, última absorve o resto
+    const baseAmount = Math.floor((total / count) * 100) / 100
+    const lastAmount = Math.round((total - baseAmount * (count - 1)) * 100) / 100
+
+    // due_month: se compra <= best_day → mês seguinte; senão → 2 meses depois
+    const purchaseDate = new Date(dateStr + "T00:00:00")
+    const day = purchaseDate.getDate()
+    const offsetMonths = day <= card.best_day ? 1 : 2
+    const firstDue = new Date(purchaseDate.getFullYear(), purchaseDate.getMonth() + offsetMonths, 1)
+
+    const fmtMonth = (d) => d.toLocaleDateString("pt-BR", { month: "short", year: "2-digit" })
+    const fmtMoney = (n) => n.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })
+
+    const lastDue = new Date(firstDue.getFullYear(), firstDue.getMonth() + count - 1, 1)
+    const splitTxt = baseAmount === lastAmount
+      ? `${count}× ${fmtMoney(baseAmount)}`
+      : `${count - 1}× ${fmtMoney(baseAmount)} + 1× ${fmtMoney(lastAmount)}`
+
+    this.purchasePreviewTarget.innerHTML = `<strong>${splitTxt}</strong> — primeira em ${fmtMonth(firstDue)}, última em ${fmtMonth(lastDue)}`
+    this.purchasePreviewTarget.hidden = false
+  }
+
+  async submitPurchase(event) {
+    event.preventDefault()
+
+    const cardId = this.purchaseCardIdTarget.value
+    const payload = {
+      description: this.purchaseFieldDescriptionTarget.value.trim(),
+      total_amount: parseFloat(this.purchaseFieldTotalTarget.value),
+      installments_count: parseInt(this.purchaseFieldInstallmentsTarget.value, 10),
+      purchased_on: this.purchaseFieldDateTarget.value,
+    }
+
+    this.setPurchaseSubmitting(true)
+    try {
+      const resp = await this.authFetch(`/api/cards/${cardId}/purchases`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ purchase: payload }),
+      })
+
+      if (!resp.ok) {
+        const data = await resp.json().catch(() => ({}))
+        alert((data.errors || ["Erro ao lançar compra"]).join(", "))
+        return
+      }
+
+      this.closePurchase()
+      // Fase C usa esse refresh pra repintar o card com novos itens
+      await this.loadCards()
+    } catch (err) {
+      console.error("[cards] purchase failed", err)
+      alert("Erro ao lançar a compra.")
+    } finally {
+      this.setPurchaseSubmitting(false)
+    }
+  }
+
+  setPurchaseSubmitting(flag) {
+    this.purchaseSubmitTarget.disabled = flag
+    this.purchaseSubmitTarget.innerHTML = flag
+      ? `<span class="spinner"></span> Lançando…`
+      : `Lançar`
   }
 
   // ---- Render ----

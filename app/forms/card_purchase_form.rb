@@ -1,8 +1,15 @@
 class CardPurchaseForm
   include ActiveModel::Model
 
-  attr_accessor :user, :card, :description, :total_amount, :installments_count, :purchased_on
-  attr_reader :card_purchase
+  attr_accessor :user, :card, :description, :total_amount, :installments_count
+  attr_reader :purchased_on, :card_purchase
+
+  def purchased_on=(value)
+    @purchased_on = case value
+                    when Date   then value
+                    when String then (Date.parse(value) rescue nil)
+                    end
+  end
 
   validates :user,         presence: true
   validates :card,         presence: true
