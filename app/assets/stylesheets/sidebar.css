@@ -1,0 +1,148 @@
+/*
+ * Sidebar component styles.
+ * Importado via @import em application.css.
+ * Propshaft cuida do fingerprint automaticamente.
+ */
+
+.sidebar-toggle {
+  display: none; /* só aparece em mobile (ver @media abaixo) */
+  position: fixed;
+  top: 0.75rem;
+  left: 0.75rem;
+  z-index: 40;
+  width: 40px;
+  height: 40px;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  color: #0f172a;
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.06);
+  cursor: pointer;
+}
+
+.sidebar-toggle:hover { background: #f1f5f9; }
+
+.sidebar-panel {
+  position: fixed;
+  top: 0;
+  left: 0;
+  bottom: 0;
+  width: var(--sidebar-width);
+  background: var(--sidebar-bg);
+  color: var(--sidebar-fg);
+  display: flex;
+  flex-direction: column;
+  padding: 1.25rem 1rem;
+  z-index: 30;
+}
+
+.sidebar-brand {
+  padding: 0.25rem 0.25rem 1.5rem;
+  border-bottom: 1px solid var(--sidebar-border);
+  margin-bottom: 1rem;
+}
+
+.sidebar-brand img {
+  width: 100%;
+  max-width: 180px;
+  height: auto;
+  /* O logo é azul+preto; invertendo a cor do "Sheet" pra ficar legível no bg escuro */
+  filter: brightness(1.15) saturate(0.95);
+}
+
+.sidebar-user {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.75rem;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid var(--sidebar-border);
+  border-radius: 8px;
+  margin-bottom: 1.25rem;
+}
+
+.sidebar-nav {
+  flex: 1 1 auto;
+  min-height: 0;
+}
+
+.sidebar-footer {
+  padding-top: 1rem;
+  border-top: 1px solid var(--sidebar-border);
+}
+
+.sidebar-logout {
+  width: 100%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  padding: 0.625rem 0.75rem;
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--sidebar-fg);
+  background: transparent;
+  border: 1px solid var(--sidebar-border);
+  border-radius: 6px;
+  cursor: pointer;
+  transition: background-color 120ms, color 120ms, border-color 120ms;
+}
+
+.sidebar-logout:hover {
+  background: rgba(239, 68, 68, 0.1);
+  color: #fca5a5;
+  border-color: rgba(239, 68, 68, 0.35);
+}
+
+.sidebar-logout svg { flex-shrink: 0; }
+
+.sidebar-avatar {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: var(--brand);
+  color: #ffffff;
+  font-weight: 600;
+  font-size: 0.875rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  user-select: none;
+}
+
+.sidebar-email {
+  font-size: 0.875rem;
+  color: var(--sidebar-fg);
+  min-width: 0;
+  flex: 1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.sidebar-backdrop {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.45);
+  z-index: 20;
+}
+
+/* Mobile (< 768px) — sidebar vira drawer */
+@media (max-width: 767px) {
+  .sidebar-toggle { display: inline-flex; }
+
+  .sidebar-panel {
+    transform: translateX(-100%);
+    transition: transform 200ms ease;
+    width: min(280px, 80vw);
+    box-shadow: 2px 0 12px rgba(0, 0, 0, 0.25);
+  }
+
+  .sidebar.is-open .sidebar-panel { transform: translateX(0); }
+  .sidebar.is-open .sidebar-backdrop { display: block; }
+}
