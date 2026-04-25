@@ -118,6 +118,8 @@
 }
 
 /* Notice/toast inline (após lançamentos, fechamentos etc.) */
+.page-notice[hidden] { display: none; }
+
 .page-notice {
   display: flex;
   align-items: center;
