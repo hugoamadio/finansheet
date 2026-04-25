@@ -6,6 +6,18 @@
     <button type="button" class="btn btn--primary" data-action="cards#openCreate">+ Novo cartão</button>
   </header>
 
+  <nav class="month-nav">
+    <button type="button" class="month-nav__arrow" data-action="cards#prevMonth" data-cards-target="prevButton">‹ Mês anterior</button>
+
+    <div class="month-nav__center">
+      <span class="month-nav__label" data-cards-target="monthLabel">—</span>
+      <span class="month-nav__closed-tag" data-cards-target="closedTag" hidden>Fechado</span>
+    </div>
+
+    <button type="button" class="month-nav__arrow" data-action="cards#nextMonth">Próximo mês ›</button>
+    <button type="button" class="month-nav__close-cycle" data-action="cards#openCloseCycle" data-cards-target="closeCycleButton">Virar Mês</button>
+  </nav>
+
   <div class="cards-grid" data-cards-target="grid">
     <div class="cards-grid__loading" data-cards-target="loading">
       <span class="spinner"></span> Carregando cartões…
@@ -145,5 +157,28 @@
         <button type="submit" class="btn btn--primary" data-cards-target="purchaseSubmit">Lançar</button>
       </div>
     </form>
+  </dialog>
+
+  <%# Modal de confirmação "Virar Mês" %>
+  <dialog class="modal" data-cards-target="closeCycleModal">
+    <header class="modal__header">
+      <h2 class="modal__title">Virar mês</h2>
+      <button type="button" class="modal__close" data-action="cards#closeCloseCycleModal" aria-label="Fechar">×</button>
+    </header>
+    <div class="modal__body">
+      <p style="margin: 0 0 1rem;">
+        Você está prestes a fechar o ciclo de
+        <strong data-cards-target="closeCycleMonth">—</strong>.
+      </p>
+      <div data-cards-target="closeCycleSummary" style="background: #f1f5f9; border-radius: 6px; padding: 0.7rem 0.9rem; font-size: 0.9rem;"></div>
+      <p style="margin: 1rem 0 0; font-size: 0.85rem; color: #64748b;">
+        Após confirmar, todos os lançamentos desse mês ficarão imutáveis.
+      </p>
+
+      <div class="modal__footer" style="margin: 1rem -1.25rem -1.25rem; padding: 1rem 1.25rem;">
+        <button type="button" class="btn btn--ghost" data-action="cards#closeCloseCycleModal">Cancelar</button>
+        <button type="button" class="btn btn--primary" data-action="cards#confirmCloseCycle" data-cards-target="closeCycleConfirm">Confirmar</button>
+      </div>
+    </div>
   </dialog>
 </section>

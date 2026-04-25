@@ -4,7 +4,21 @@ class CardsController < ApiController
   def index
     month = parse_month(params[:month]) || Date.current.beginning_of_month
     cards = current_user.cards.order(:created_at)
-    render json: { month: month, cards: cards.map { |c| serialize_with_month(c, month) } }
+
+    has_earlier_data = Installment
+      .joins(:card_purchase)
+      .where(card_purchases: { user_id: current_user.id })
+      .where("due_month < ?", month)
+      .exists?
+
+    month_cycle = current_user.cycles.find_by(reference_month: month)
+
+    render json: {
+      month:            month,
+      has_earlier_data: has_earlier_data,
+      month_closed_at:  month_cycle&.closed_at,
+      cards:            cards.map { |c| serialize_with_month(c, month) },
+    }
   end
 
   def create
@@ -58,12 +72,12 @@ class CardsController < ApiController
   ITEMS_LIMIT = 10
 
   def serialize_with_month(card, month)
-    open_scope = Installment
+    card_scope = Installment
       .joins(:card_purchase)
       .where(card_purchases: { card_id: card.id })
-      .where(cycle_id: nil)
 
-    month_scope = open_scope.where(due_month: month)
+    open_scope  = card_scope.where(cycle_id: nil)
+    month_scope = card_scope.where(due_month: month)
 
     month_count   = month_scope.count
     month_records = month_scope.order(due_month: :asc, number: :asc).limit(ITEMS_LIMIT).includes(:card_purchase)

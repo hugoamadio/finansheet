@@ -11,26 +11,115 @@ export default class extends Controller {
     "purchaseCardHeader", "purchaseCardName", "purchaseCardBank", "purchaseCardMeta",
     "purchaseFieldDescription", "purchaseFieldTotal", "purchaseFieldInstallments",
     "purchaseFieldDate", "purchasePreview",
+    "monthLabel", "prevButton", "closedTag", "closeCycleButton",
+    "closeCycleModal", "closeCycleMonth", "closeCycleSummary", "closeCycleConfirm",
   ]
 
   connect() {
     this.cards = []
+    this.currentMonth = firstDayOfCurrentMonth()
+    this.monthClosedAt = null
+    this.hasEarlierData = false
     this.loadCards()
   }
 
   // ---- API ----
 
-  async loadCards() {
-    this.showLoading()
+  async loadCards({ withFade = false } = {}) {
+    if (withFade) {
+      this.gridTarget.classList.add("cards-grid--fading")
+    } else {
+      this.showLoading()
+    }
+
     try {
-      const resp = await this.authFetch("/api/cards")
+      const monthParam = formatYMD(this.currentMonth)
+      const resp = await this.authFetch(`/api/cards?month=${monthParam}`)
       if (!resp.ok) throw new Error(`GET /api/cards falhou: ${resp.status}`)
       const data = await resp.json()
       this.cards = data.cards ?? []
+      this.hasEarlierData = !!data.has_earlier_data
+      this.monthClosedAt  = data.month_closed_at
       this.render()
+      this.renderMonthNav()
     } catch (err) {
       console.error("[cards] load failed", err)
       this.gridTarget.innerHTML = `<div class="cards-grid__empty">Erro carregando cartões.</div>`
+    } finally {
+      this.gridTarget.classList.remove("cards-grid--fading")
+    }
+  }
+
+  // ---- Navegação de mês ----
+
+  prevMonth() {
+    if (!this.hasEarlierData) return
+    this.currentMonth = addMonths(this.currentMonth, -1)
+    this.loadCards({ withFade: true })
+  }
+
+  nextMonth() {
+    this.currentMonth = addMonths(this.currentMonth, 1)
+    this.loadCards({ withFade: true })
+  }
+
+  renderMonthNav() {
+    this.monthLabelTarget.textContent = formatMonthLabel(this.currentMonth)
+    this.prevButtonTarget.disabled = !this.hasEarlierData
+
+    const closed = !!this.monthClosedAt
+    this.closedTagTarget.hidden = !closed
+    this.closeCycleButtonTarget.disabled = closed
+    this.closeCycleButtonTarget.textContent = closed ? "Mês fechado" : "Virar Mês"
+  }
+
+  // ---- Modal "Virar Mês" ----
+
+  openCloseCycle() {
+    if (this.monthClosedAt) return
+
+    this.closeCycleMonthTarget.textContent = formatMonthLabel(this.currentMonth)
+
+    const lines = this.cards
+      .filter((c) => Number(c.month_total) > 0)
+      .map((c) => `<div style="display:flex;justify-content:space-between"><span>${escapeHtml(c.name || "—")}</span><strong>${formatBRL(c.month_total)}</strong></div>`)
+
+    const grandTotal = this.cards.reduce((sum, c) => sum + Number(c.month_total || 0), 0)
+    const summary = lines.length === 0
+      ? `<div style="opacity:0.7">Nenhum lançamento de cartão nesse mês.</div>`
+      : lines.join("") + `<hr style="margin:0.5rem 0;border:none;border-top:1px solid #cbd5e1"><div style="display:flex;justify-content:space-between"><span>Total</span><strong>${formatBRL(grandTotal)}</strong></div>`
+
+    this.closeCycleSummaryTarget.innerHTML = summary
+    this.closeCycleModalTarget.showModal()
+  }
+
+  closeCloseCycleModal() {
+    this.closeCycleModalTarget.close()
+  }
+
+  async confirmCloseCycle() {
+    this.closeCycleConfirmTarget.disabled = true
+    this.closeCycleConfirmTarget.innerHTML = `<span class="spinner"></span> Fechando…`
+
+    try {
+      const resp = await this.authFetch(`/api/cycles/close`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ month: formatYMD(this.currentMonth) }),
+      })
+      if (!resp.ok) {
+        const data = await resp.json().catch(() => ({}))
+        alert((data.errors || ["Erro ao fechar o mês"]).join(", "))
+        return
+      }
+      this.closeCloseCycleModal()
+      await this.loadCards({ withFade: true })
+    } catch (err) {
+      console.error("[cards] close cycle failed", err)
+      alert("Erro ao fechar o mês.")
+    } finally {
+      this.closeCycleConfirmTarget.disabled = false
+      this.closeCycleConfirmTarget.textContent = "Confirmar"
     }
   }
 
@@ -340,4 +429,24 @@ function escapeHtml(str) {
     .replace(/>/g, "&gt;")
     .replace(/"/g, "&quot;")
     .replace(/'/g, "&#39;")
+}
+
+function firstDayOfCurrentMonth() {
+  const now = new Date()
+  return new Date(now.getFullYear(), now.getMonth(), 1)
+}
+
+function addMonths(date, n) {
+  return new Date(date.getFullYear(), date.getMonth() + n, 1)
+}
+
+function formatYMD(date) {
+  const y = date.getFullYear()
+  const m = String(date.getMonth() + 1).padStart(2, "0")
+  const d = String(date.getDate()).padStart(2, "0")
+  return `${y}-${m}-${d}`
+}
+
+function formatMonthLabel(date) {
+  return date.toLocaleDateString("pt-BR", { month: "long", year: "numeric" })
 }

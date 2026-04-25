@@ -16,6 +16,8 @@ Rails.application.routes.draw do
     resources :cards, only: [:index, :create, :update, :destroy] do
       resources :purchases, only: [:create], controller: "card_purchases"
     end
+
+    post "cycles/close" => "cycles#close"
   end
 
   # App
