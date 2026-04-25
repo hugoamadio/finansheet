@@ -8,6 +8,9 @@ class User < ApplicationRecord
             uniqueness: true,
             format: { with: URI::MailTo::EMAIL_REGEXP }
 
-  has_many :user_cards, dependent: :destroy
-  has_many :cards, through: :user_cards
+  has_many :user_cards,     dependent: :destroy
+  has_many :cards,          through: :user_cards
+  has_many :cycles,         dependent: :restrict_with_exception
+  has_many :fixed_expenses, dependent: :destroy
+  has_many :card_purchases, dependent: :restrict_with_exception
 end

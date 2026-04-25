@@ -10,10 +10,24 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_04_24_181500) do
+ActiveRecord::Schema[8.1].define(version: 2026_04_24_190400) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pgcrypto"
+
+  create_table "card_purchases", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
+    t.uuid "card_id", null: false
+    t.datetime "created_at", null: false
+    t.text "description", null: false
+    t.integer "installments_count", default: 1, null: false
+    t.date "purchased_on", null: false
+    t.decimal "total_amount", precision: 12, scale: 2, null: false
+    t.datetime "updated_at", null: false
+    t.uuid "user_id", null: false
+    t.index ["card_id"], name: "index_card_purchases_on_card_id"
+    t.index ["user_id"], name: "index_card_purchases_on_user_id"
+    t.check_constraint "installments_count >= 1", name: "card_purchases_installments_count_positive"
+  end
 
   create_table "cards", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
     t.text "bank"
@@ -24,8 +38,60 @@ ActiveRecord::Schema[8.1].define(version: 2026_04_24_181500) do
     t.integer "pay_day"
     t.datetime "updated_at", null: false
     t.check_constraint "best_day IS NULL OR best_day >= 1 AND best_day <= 31", name: "cards_best_day_range"
-    t.check_constraint "mode::text = ANY (ARRAY['credit'::character varying::text, 'debit'::character varying::text])", name: "cards_mode_check"
+    t.check_constraint "mode::text = ANY (ARRAY['credit'::character varying, 'debit'::character varying]::text[])", name: "cards_mode_check"
     t.check_constraint "pay_day IS NULL OR pay_day >= 1 AND pay_day <= 31", name: "cards_pay_day_range"
+  end
+
+  create_table "cycles", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
+    t.datetime "closed_at"
+    t.datetime "created_at", null: false
+    t.date "reference_month", null: false
+    t.decimal "total_expenses", precision: 12, scale: 2, default: "0.0", null: false
+    t.decimal "total_income", precision: 12, scale: 2, default: "0.0", null: false
+    t.datetime "updated_at", null: false
+    t.uuid "user_id", null: false
+    t.index ["user_id", "reference_month"], name: "index_cycles_on_user_id_and_reference_month", unique: true
+    t.index ["user_id"], name: "index_cycles_on_user_id"
+  end
+
+  create_table "fixed_expense_payments", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
+    t.decimal "amount", precision: 12, scale: 2, null: false
+    t.datetime "created_at", null: false
+    t.uuid "cycle_id"
+    t.uuid "fixed_expense_id", null: false
+    t.datetime "paid_at"
+    t.date "reference_month", null: false
+    t.datetime "updated_at", null: false
+    t.index ["cycle_id"], name: "index_fixed_expense_payments_on_cycle_id"
+    t.index ["fixed_expense_id", "reference_month"], name: "idx_on_fixed_expense_id_reference_month_07ef94a6f1", unique: true
+    t.index ["fixed_expense_id"], name: "index_fixed_expense_payments_on_fixed_expense_id"
+  end
+
+  create_table "fixed_expenses", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
+    t.boolean "active", default: true, null: false
+    t.decimal "amount", precision: 12, scale: 2, null: false
+    t.datetime "created_at", null: false
+    t.integer "due_day"
+    t.text "name", null: false
+    t.datetime "updated_at", null: false
+    t.uuid "user_id", null: false
+    t.index ["user_id"], name: "index_fixed_expenses_on_user_id"
+    t.check_constraint "due_day IS NULL OR due_day >= 1 AND due_day <= 31", name: "fixed_expenses_due_day_range"
+  end
+
+  create_table "installments", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
+    t.decimal "amount", precision: 12, scale: 2, null: false
+    t.uuid "card_purchase_id", null: false
+    t.datetime "created_at", null: false
+    t.uuid "cycle_id"
+    t.date "due_month", null: false
+    t.integer "number", null: false
+    t.datetime "updated_at", null: false
+    t.index ["card_purchase_id", "number"], name: "index_installments_on_card_purchase_id_and_number", unique: true
+    t.index ["card_purchase_id"], name: "index_installments_on_card_purchase_id"
+    t.index ["cycle_id"], name: "index_installments_on_cycle_id"
+    t.index ["due_month"], name: "index_installments_on_due_month"
+    t.check_constraint "number >= 1", name: "installments_number_positive"
   end
 
   create_table "user_cards", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
@@ -46,6 +112,14 @@ ActiveRecord::Schema[8.1].define(version: 2026_04_24_181500) do
     t.index ["email"], name: "index_users_on_email", unique: true
   end
 
+  add_foreign_key "card_purchases", "cards"
+  add_foreign_key "card_purchases", "users"
+  add_foreign_key "cycles", "users"
+  add_foreign_key "fixed_expense_payments", "cycles"
+  add_foreign_key "fixed_expense_payments", "fixed_expenses"
+  add_foreign_key "fixed_expenses", "users"
+  add_foreign_key "installments", "card_purchases"
+  add_foreign_key "installments", "cycles"
   add_foreign_key "user_cards", "cards"
   add_foreign_key "user_cards", "users"
 end
