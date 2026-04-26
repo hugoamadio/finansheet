@@ -1,0 +1,59 @@
+<%#
+  Modal de setup do dia de recebimento (salary_day).
+  - Renderizado no application.html.erb pra estar em toda página autenticada.
+  - O salary_setup_controller decide quando abrir: ouve `auth:user` e abre se
+    o usuário não tiver salário configurado.
+  - Bloqueante: sem botão "fechar", sem fechar no ESC. Sai só ao salvar OK.
+%>
+<dialog class="modal modal--salary-setup"
+        data-controller="salary-setup"
+        data-salary-setup-target="dialog"
+        data-action="cancel->salary-setup#preventClose">
+  <header class="modal__header">
+    <h2 class="modal__title">Quando você recebe o salário?</h2>
+  </header>
+
+  <form class="modal__body"
+        data-salary-setup-target="form"
+        data-action="submit->salary-setup#submit">
+    <p style="margin: 0 0 1rem; font-size: 0.9rem; color: #475569;">
+      Esse dia é a âncora do seu ciclo financeiro mensal — escolha o dia fixo
+      em que cai seu salário, ou marque "último dia do mês" se variar conforme
+      o calendário (28/30/31).
+    </p>
+
+    <fieldset style="border: none; padding: 0; margin: 0 0 1rem;">
+      <label class="form-field" style="flex-direction: row; align-items: center; gap: 0.6rem; margin-bottom: 0.6rem;">
+        <input type="radio" name="salary_mode" value="fixed" checked
+               data-salary-setup-target="modeFixed"
+               data-action="change->salary-setup#modeChanged">
+        <span>Dia fixo do mês</span>
+      </label>
+
+      <label class="form-field" style="flex-direction: row; align-items: center; gap: 0.6rem; margin-bottom: 0;">
+        <input type="radio" name="salary_mode" value="last"
+               data-salary-setup-target="modeLast"
+               data-action="change->salary-setup#modeChanged">
+        <span>Último dia do mês</span>
+      </label>
+    </fieldset>
+
+    <label class="form-field" data-salary-setup-target="dayWrapper">
+      Dia (1 a 31)
+      <input type="number" min="1" max="31" placeholder="Ex.: 5"
+             data-salary-setup-target="dayInput">
+    </label>
+
+    <div class="modal-error"
+         data-salary-setup-target="error"
+         hidden
+         style="background:#fef2f2;border:1px solid #fecaca;color:#b91c1c;padding:0.5rem 0.7rem;border-radius:6px;font-size:0.85rem;margin:0 0 1rem;"></div>
+
+    <div class="modal__footer" style="margin: 0 -1.25rem -1.25rem; padding: 1rem 1.25rem;">
+      <button type="submit" class="btn btn--primary"
+              data-salary-setup-target="submit">
+        Salvar
+      </button>
+    </div>
+  </form>
+</dialog>

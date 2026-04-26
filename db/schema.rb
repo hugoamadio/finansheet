@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_04_24_190400) do
+ActiveRecord::Schema[8.1].define(version: 2026_04_26_000000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pgcrypto"
@@ -108,8 +108,12 @@ ActiveRecord::Schema[8.1].define(version: 2026_04_24_190400) do
     t.datetime "created_at", null: false
     t.string "email", null: false
     t.string "password_digest", null: false
+    t.integer "salary_day"
+    t.boolean "salary_on_last_day", default: false, null: false
     t.datetime "updated_at", null: false
     t.index ["email"], name: "index_users_on_email", unique: true
+    t.check_constraint "NOT (salary_day IS NOT NULL AND salary_on_last_day = true)", name: "users_salary_day_xor_last_day"
+    t.check_constraint "salary_day IS NULL OR salary_day >= 1 AND salary_day <= 31", name: "users_salary_day_range"
   end
 
   add_foreign_key "card_purchases", "cards"

@@ -5,7 +5,7 @@ import { Controller } from "@hotwired/stimulus"
 //   - Popula avatar + email a partir de window.currentUser
 //     (mantido vivo pelo auth_controller, que dispara "auth:user" quando atualiza)
 export default class extends Controller {
-  static targets = ["avatar", "email"]
+  static targets = ["avatar", "email", "salary"]
   static OPEN_CLASS = "is-open"
 
   connect() {
@@ -41,10 +41,26 @@ export default class extends Controller {
 
     if (this.hasEmailTarget)  this.emailTarget.textContent  = user.email
     if (this.hasAvatarTarget) this.avatarTarget.textContent = initialOf(user.email)
+
+    if (this.hasSalaryTarget) {
+      const label = salaryLabel(user)
+      if (label) {
+        this.salaryTarget.textContent = label
+        this.salaryTarget.hidden = false
+      } else {
+        this.salaryTarget.hidden = true
+      }
+    }
   }
 }
 
 function initialOf(email) {
   const str = String(email).trim()
   return str.length ? str.charAt(0).toUpperCase() : "?"
+}
+
+function salaryLabel(user) {
+  if (user.salary_on_last_day) return "Recebe no último dia do mês"
+  if (Number.isFinite(user.salary_day)) return `Recebe dia ${user.salary_day}`
+  return null
 }

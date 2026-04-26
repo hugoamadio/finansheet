@@ -7,9 +7,10 @@ Rails.application.routes.draw do
   # get "service-worker" => "rails/pwa#service_worker", as: :pwa_service_worker
 
   # Auth
-  get  "login" => "logins#new",   as: :login
-  post "auth"  => "auth#create",  as: :auth
-  get  "me"    => "auth#show",    as: :me
+  get   "login" => "logins#new",   as: :login
+  post  "auth"  => "auth#create",  as: :auth
+  get   "me"    => "auth#show",    as: :me
+  patch "me"    => "auth#update"
 
   # API JSON (chamada via fetch após render)
   scope :api, defaults: { format: :json } do
