@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_04_26_000000) do
+ActiveRecord::Schema[8.1].define(version: 2026_04_28_000000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pgcrypto"
@@ -79,6 +79,17 @@ ActiveRecord::Schema[8.1].define(version: 2026_04_26_000000) do
     t.check_constraint "due_day IS NULL OR due_day >= 1 AND due_day <= 31", name: "fixed_expenses_due_day_range"
   end
 
+  create_table "incomes", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
+    t.decimal "amount", precision: 12, scale: 2, null: false
+    t.datetime "created_at", null: false
+    t.date "reference_month", null: false
+    t.datetime "updated_at", null: false
+    t.uuid "user_id", null: false
+    t.index ["user_id", "reference_month"], name: "index_incomes_on_user_id_and_reference_month", unique: true
+    t.index ["user_id"], name: "index_incomes_on_user_id"
+    t.check_constraint "amount >= 0::numeric", name: "incomes_amount_non_negative"
+  end
+
   create_table "installments", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
     t.decimal "amount", precision: 12, scale: 2, null: false
     t.uuid "card_purchase_id", null: false
@@ -122,6 +133,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_04_26_000000) do
   add_foreign_key "fixed_expense_payments", "cycles"
   add_foreign_key "fixed_expense_payments", "fixed_expenses"
   add_foreign_key "fixed_expenses", "users"
+  add_foreign_key "incomes", "users"
   add_foreign_key "installments", "card_purchases"
   add_foreign_key "installments", "cycles"
   add_foreign_key "user_cards", "cards"

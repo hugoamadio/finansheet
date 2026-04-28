@@ -31,6 +31,21 @@
       <%# Links futuros entram aqui. Por enquanto fica vazio. %>
     </nav>
 
+    <%# Resumo do ciclo. Componente independente: ouve "cycle:summary-update"
+        do cards_controller e renderiza A receber + cartões + Saldo. %>
+    <section class="sidebar-cycle" data-controller="cycle-summary"
+             data-cycle-summary-target="root" hidden>
+      <header class="sidebar-cycle__header">
+        <h2 class="sidebar-cycle__title">Resumo do ciclo</h2>
+        <span class="sidebar-cycle__month" data-cycle-summary-target="month">—</span>
+      </header>
+      <ul class="sidebar-cycle__lines" data-cycle-summary-target="lines"></ul>
+      <footer class="sidebar-cycle__footer">
+        <span>Saldo</span>
+        <strong class="sidebar-cycle__balance" data-cycle-summary-target="balance">R$ 0,00</strong>
+      </footer>
+    </section>
+
     <div class="sidebar-footer">
       <button type="button"
               class="sidebar-logout"

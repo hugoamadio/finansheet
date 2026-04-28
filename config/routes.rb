@@ -20,6 +20,9 @@ Rails.application.routes.draw do
     end
 
     post "cycles/close" => "cycles#close"
+
+    get "incomes" => "incomes#show"
+    put "incomes" => "incomes#upsert"
   end
 
   # App

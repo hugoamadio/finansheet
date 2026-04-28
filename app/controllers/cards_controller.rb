@@ -12,12 +12,14 @@ class CardsController < ApiController
       .where("due_month < ?", month)
       .exists?
 
-    month_cycle = current_user.cycles.find_by(reference_month: month)
+    month_cycle  = current_user.cycles.find_by(reference_month: month)
+    month_income = current_user.incomes.find_by(reference_month: month)
 
     render json: {
       month:            month,
       has_earlier_data: has_earlier_data,
       month_closed_at:  month_cycle&.closed_at,
+      expected_income:  month_income&.amount&.to_f,
       cards:            cards.map { |c| serialize(c) },
     }
   end

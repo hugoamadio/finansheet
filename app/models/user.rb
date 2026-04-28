@@ -18,6 +18,7 @@ class User < ApplicationRecord
   has_many :cycles,         dependent: :restrict_with_exception
   has_many :fixed_expenses, dependent: :destroy
   has_many :card_purchases, dependent: :restrict_with_exception
+  has_many :incomes,        dependent: :destroy
 
   def salary_configured?
     salary_day.present? || salary_on_last_day?

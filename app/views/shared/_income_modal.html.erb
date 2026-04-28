@@ -1,0 +1,44 @@
+<%#
+  Modal de definir/editar o "A receber" do mês.
+  - Componente independente: o income_controller ouve "income:edit-request"
+    pra abrir, faz upsert via PUT /api/incomes e dispatcha "income:changed".
+%>
+<dialog class="modal"
+        data-controller="income"
+        data-income-target="dialog">
+  <header class="modal__header">
+    <h2 class="modal__title" data-income-target="title">A receber</h2>
+    <button type="button" class="modal__close"
+            data-action="income#close"
+            aria-label="Fechar">×</button>
+  </header>
+
+  <form class="modal__body"
+        data-income-target="form"
+        data-action="submit->income#submit">
+
+    <p style="margin: 0 0 1rem; color: #475569; font-size: 0.9rem;">
+      Quanto você espera receber neste ciclo? O valor é independente por mês —
+      vira o ciclo, começa de novo.
+    </p>
+
+    <label class="form-field">
+      Valor (R$)
+      <input type="number" step="0.01" min="0" required
+             data-income-target="amountInput"
+             placeholder="Ex.: 4000.00">
+    </label>
+
+    <div class="modal-error"
+         data-income-target="error"
+         hidden
+         style="background:#fef2f2;border:1px solid #fecaca;color:#b91c1c;padding:0.5rem 0.7rem;border-radius:6px;font-size:0.85rem;margin:1rem 0 0;"></div>
+
+    <div class="modal__footer" style="margin: 1rem -1.25rem -1.25rem; padding: 1rem 1.25rem;">
+      <button type="button" class="btn btn--ghost"
+              data-action="income#close">Cancelar</button>
+      <button type="submit" class="btn btn--primary"
+              data-income-target="submit">Salvar</button>
+    </div>
+  </form>
+</dialog>

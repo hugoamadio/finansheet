@@ -10,7 +10,7 @@
 @import "popover.css";
 
 :root {
-  --sidebar-width: 240px;
+  --sidebar-width: 290px;
   --sidebar-bg: #0f172a;
   --sidebar-fg: #e2e8f0;
   --sidebar-muted: #94a3b8;

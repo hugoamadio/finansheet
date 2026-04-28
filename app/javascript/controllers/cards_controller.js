@@ -30,20 +30,31 @@ export default class extends Controller {
     this.currentMonth = readMonthFromURL()
     this.monthClosedAt = null
     this.hasEarlierData = false
+    this.expectedIncome = null
 
-    // Os modais de editar/remover compra moram em controllers próprios.
-    // Aqui só ouvimos o "purchase:changed" pra recarregar o card afetado.
+    // Os modais de editar/remover compra e o de income moram em controllers
+    // próprios. Aqui só ouvimos os eventos que eles disparam pra recarregar
+    // o que muda — purchase mexe nos totais do card; income atualiza o resumo.
     this.onPurchaseChanged = (event) => {
       const cardId = event.detail?.cardId
       if (cardId) this.loadInstallments(cardId)
     }
+    this.onIncomeChanged = (event) => {
+      // Atualiza o resumo só quando o evento é do mês visualizado.
+      const eventMonth = event.detail?.month
+      if (!eventMonth || eventMonth !== formatYMD(this.currentMonth)) return
+      this.expectedIncome = event.detail.amount
+      this.emitSummaryUpdate()
+    }
     window.addEventListener("purchase:changed", this.onPurchaseChanged)
+    window.addEventListener("income:changed",   this.onIncomeChanged)
 
     this.loadCards()
   }
 
   disconnect() {
     window.removeEventListener("purchase:changed", this.onPurchaseChanged)
+    window.removeEventListener("income:changed",   this.onIncomeChanged)
   }
 
   // ---- API: cards (metadata + globals do mês) ----
@@ -68,9 +79,11 @@ export default class extends Controller {
       this.cards = data.cards ?? []
       this.hasEarlierData = !!data.has_earlier_data
       this.monthClosedAt  = data.month_closed_at
+      this.expectedIncome = data.expected_income ?? null
       this.installmentsByCard = {}
       this.render()
       this.renderMonthNav()
+      this.emitSummaryUpdate()
       // dispara fetch das installments de cada cartão (em paralelo, sem esperar)
       this.cards.forEach((c) => this.loadInstallments(c.id))
     } catch (err) {
@@ -134,6 +147,9 @@ export default class extends Controller {
 
     cardEl.querySelector("[data-month-total]").textContent = formatBRL(data.month_total ?? 0)
     cardEl.querySelector("[data-total-open]").textContent  = formatBRL(data.total_open  ?? 0)
+
+    // Saldo do mês depende do total de cada card; reemite o resumo a cada chegada.
+    this.emitSummaryUpdate()
   }
 
   // ---- Navegação de mês (URL state) ----
@@ -155,6 +171,31 @@ export default class extends Controller {
     this.currentMonth = addMonths(this.currentMonth, 1)
     writeMonthToURL(this.currentMonth)
     this.loadCards({ withFade: true })
+  }
+
+  // ---- Resumo do ciclo (sidebar) ----
+
+  // Empacota o estado do mês visualizado e emite "cycle:summary-update" pro
+  // cycle_summary_controller (que vive na sidebar) renderizar. Disparado em:
+  // - chegada de /api/cards (mês trocou ou boot)
+  // - chegada de /api/cards/:id/installments (totais por card chegaram)
+  // - "income:changed" (usuário definiu/editou A receber)
+  emitSummaryUpdate() {
+    if (!this.currentMonth) return
+
+    const cardLines = this.cards
+      .map((c) => ({ name: c.name, total: Number(this.installmentsByCard[c.id]?.month_total ?? 0) }))
+      .filter((l) => l.total > 0)
+
+    window.dispatchEvent(new CustomEvent("cycle:summary-update", {
+      detail: {
+        month:          formatYMD(this.currentMonth),
+        monthLabel:     formatCycleLabel(this.currentMonth),
+        expectedIncome: this.expectedIncome,
+        monthClosed:    !!this.monthClosedAt,
+        cardLines,
+      },
+    }))
   }
 
   renderMonthNav() {
