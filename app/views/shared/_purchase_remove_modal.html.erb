@@ -1,0 +1,40 @@
+<%#
+  Modal de remoção de uma CardPurchase.
+  - Componente independente: o purchase_remove_controller ouve "purchase:remove-request"
+    e abre o dialog. Confirma → DELETE /api/cards/:cardId/purchases/:id e dispatcha
+    "purchase:changed".
+%>
+<dialog class="modal" data-controller="purchase-remove" data-purchase-remove-target="dialog">
+  <header class="modal__header">
+    <h2 class="modal__title">Remover compra</h2>
+    <button type="button" class="modal__close" data-action="purchase-remove#close" aria-label="Fechar">×</button>
+  </header>
+
+  <div class="modal__body">
+    <p style="margin: 0 0 0.6rem; font-size: 0.95rem;">
+      Tem certeza que deseja remover esta compra?
+    </p>
+
+    <div data-purchase-remove-target="summary"
+         style="background:#f1f5f9;border:1px solid #e2e8f0;border-radius:6px;padding:0.7rem 0.9rem;font-size:0.9rem;color:#0f172a;">
+      —
+    </div>
+
+    <p style="margin: 0.8rem 0 0; font-size: 0.8rem; color: #64748b;">
+      Todas as parcelas em aberto serão removidas. Essa ação não pode ser desfeita.
+    </p>
+
+    <div class="modal-error"
+         data-purchase-remove-target="error"
+         hidden
+         style="background:#fef2f2;border:1px solid #fecaca;color:#b91c1c;padding:0.5rem 0.7rem;border-radius:6px;font-size:0.85rem;margin:1rem 0 0;"></div>
+
+    <div class="modal__footer" style="margin: 1rem -1.25rem -1.25rem; padding: 1rem 1.25rem;">
+      <button type="button" class="btn btn--ghost"
+              data-action="purchase-remove#close">Cancelar</button>
+      <button type="button" class="btn btn--danger"
+              data-purchase-remove-target="confirm"
+              data-action="purchase-remove#confirm">Remover</button>
+    </div>
+  </div>
+</dialog>

@@ -1,0 +1,29 @@
+/*
+ * Popover dedicado (componente popover_controller).
+ * Posicionamento via JS (left/top setados inline). Aqui só estilo + animação.
+ */
+
+.popover {
+  position: absolute;
+  z-index: 1000;
+  max-width: 280px;
+  padding: 0.5rem 0.7rem;
+  font-size: 0.78rem;
+  line-height: 1.35;
+  font-weight: 500;
+  color: #f8fafc;
+  background: #0f172a;
+  border-radius: 6px;
+  box-shadow:
+    0 6px 18px -4px rgba(15, 23, 42, 0.35),
+    0 2px 6px -2px rgba(15, 23, 42, 0.25);
+  pointer-events: none; /* não rouba hover do disparador */
+  opacity: 0;
+  transform: translateY(2px);
+  transition: opacity 120ms ease-out, transform 120ms ease-out;
+}
+
+.popover--visible {
+  opacity: 1;
+  transform: translateY(0);
+}

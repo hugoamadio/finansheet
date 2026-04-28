@@ -1,0 +1,58 @@
+<%#
+  Modal de editar compra (CardPurchase).
+  - Componente independente: o purchase_edit_controller ouve "purchase:edit-request"
+    (disparado pelo cards_controller quando o usuário clica no lápis), preenche
+    o form com o payload e abre o dialog. Submit chama PATCH /api/cards/:cardId/
+    purchases/:id e dispatcha "purchase:changed" pra recarregar a listagem.
+%>
+<dialog class="modal modal--purchase"
+        data-controller="purchase-edit"
+        data-purchase-edit-target="dialog">
+  <header class="modal-purchase__card modal-purchase__card--credit">
+    <div class="modal-purchase__card-top">
+      <div>
+        <div class="modal-purchase__card-name" data-purchase-edit-target="header">Editar compra</div>
+        <div class="modal-purchase__card-bank" data-purchase-edit-target="subheader">—</div>
+      </div>
+      <button type="button" class="modal-purchase__card-close"
+              data-action="purchase-edit#close"
+              aria-label="Fechar">×</button>
+    </div>
+  </header>
+
+  <form class="modal__body"
+        data-purchase-edit-target="form"
+        data-action="submit->purchase-edit#submit">
+
+    <div class="form-row">
+      <label class="form-field">
+        Valor total (R$)
+        <input type="number" step="0.01" min="0.01" required
+               data-purchase-edit-target="totalInput"
+               data-action="input->purchase-edit#updatePreview">
+      </label>
+      <label class="form-field">
+        Parcelas
+        <input type="number" min="1" max="48" required
+               data-purchase-edit-target="countInput"
+               data-action="input->purchase-edit#updatePreview">
+      </label>
+    </div>
+
+    <div class="modal-purchase__preview"
+         data-purchase-edit-target="preview"
+         hidden></div>
+
+    <div class="modal-error"
+         data-purchase-edit-target="error"
+         hidden
+         style="background:#fef2f2;border:1px solid #fecaca;color:#b91c1c;padding:0.5rem 0.7rem;border-radius:6px;font-size:0.85rem;margin:0 0 1rem;"></div>
+
+    <div class="modal__footer" style="margin: 1rem -1.25rem -1.25rem; padding: 1rem 1.25rem;">
+      <button type="button" class="btn btn--ghost"
+              data-action="purchase-edit#close">Cancelar</button>
+      <button type="submit" class="btn btn--primary"
+              data-purchase-edit-target="submit">Salvar</button>
+    </div>
+  </form>
+</dialog>

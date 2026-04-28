@@ -25,10 +25,25 @@ export default class extends Controller {
   connect() {
     this.cards = []
     this.installmentsByCard = {}
-    this.currentMonth = readMonthFromURL() ?? firstDayOfCurrentMonth()
+    // Sem URL param o backend resolve o ciclo ativo (1º aberto ≥ hoje) e
+    // devolve em data.month — adotamos isso como currentMonth no boot.
+    this.currentMonth = readMonthFromURL()
     this.monthClosedAt = null
     this.hasEarlierData = false
+
+    // Os modais de editar/remover compra moram em controllers próprios.
+    // Aqui só ouvimos o "purchase:changed" pra recarregar o card afetado.
+    this.onPurchaseChanged = (event) => {
+      const cardId = event.detail?.cardId
+      if (cardId) this.loadInstallments(cardId)
+    }
+    window.addEventListener("purchase:changed", this.onPurchaseChanged)
+
     this.loadCards()
+  }
+
+  disconnect() {
+    window.removeEventListener("purchase:changed", this.onPurchaseChanged)
   }
 
   // ---- API: cards (metadata + globals do mês) ----
@@ -38,10 +53,18 @@ export default class extends Controller {
     else this.showLoading()
 
     try {
-      const monthParam = formatYMD(this.currentMonth)
-      const resp = await this.authFetch(`/api/cards?month=${monthParam}`)
+      const url = this.currentMonth
+        ? `/api/cards?month=${formatYMD(this.currentMonth)}`
+        : `/api/cards`
+      const resp = await this.authFetch(url)
       if (!resp.ok) throw new Error(`GET /api/cards falhou: ${resp.status}`)
       const data = await resp.json()
+      // Boot sem URL param: adota o ciclo ativo que o backend resolveu e
+      // sincroniza com a URL pra sobreviver F5.
+      if (!this.currentMonth) {
+        this.currentMonth = parseYMD(data.month) ?? firstDayOfCurrentMonth()
+        writeMonthToURL(this.currentMonth)
+      }
       this.cards = data.cards ?? []
       this.hasEarlierData = !!data.has_earlier_data
       this.monthClosedAt  = data.month_closed_at
@@ -86,19 +109,18 @@ export default class extends Controller {
     const itemsEl = cardEl.querySelector("[data-items]")
     itemsEl.innerHTML = ""
 
+    const cardId = cardEl.dataset.cardId
+    const monthClosed = !!this.monthClosedAt
+
     for (const inst of data.month_installments ?? []) {
       const fraction = inst.installments_count === 1
         ? "x1"
         : `${inst.number}/${inst.installments_count}`
 
       const li = document.createElement("li")
-      li.innerHTML = `
-        <span class="card-item__item-label">
-          ${escapeHtml(inst.description)}
-          <span class="card-item__item-installment">${fraction}</span>
-        </span>
-        <span class="card-item__item-amount">${formatBRL(inst.amount)}</span>
-      `
+      li.appendChild(buildItemLabel(inst.description, fraction))
+      li.appendChild(buildItemAmount(inst.amount))
+      li.appendChild(buildItemActions({ inst, cardId, monthClosed }))
       itemsEl.appendChild(li)
     }
 
@@ -136,7 +158,7 @@ export default class extends Controller {
   }
 
   renderMonthNav() {
-    this.monthLabelTarget.textContent = formatMonthLabel(this.currentMonth)
+    this.monthLabelTarget.textContent = formatCycleLabel(this.currentMonth)
     this.prevButtonTarget.disabled = !this.canGoBack()
 
     const closed = !!this.monthClosedAt
@@ -482,6 +504,14 @@ export default class extends Controller {
     node.querySelector("[data-month-total]").textContent = "—"
     node.querySelector("[data-total-open]").textContent  = "—"
 
+    if (this.monthClosedAt) {
+      node.querySelectorAll(".card-item__actions button").forEach((btn) => {
+        btn.disabled = true
+        btn.dataset.controller = "popover"
+        btn.dataset.popoverTextValue = POPOVER_CLOSED_MONTH_TEXT
+      })
+    }
+
     return node
   }
 
@@ -539,6 +569,92 @@ function escapeHtml(str) {
     .replace(/'/g, "&#39;")
 }
 
+// === Construção dos itens de installment ===
+//
+// Quem dispatcha o evento sou eu; o purchase_edit/purchase_remove controllers
+// (cada um no seu arquivo) ouvem e abrem seus modais. Isso mantém os modais
+// independentes de mim — só sei o nome do evento e o shape do detail.
+
+const POPOVER_BLOCKED_TEXT =
+  "Não é possível editar/excluir essa compra: ela tem parcelas em ciclos anteriores já fechados."
+
+const POPOVER_CLOSED_MONTH_TEXT =
+  "Mês fechado — não é possível alterar lançamentos deste ciclo."
+
+function buildItemLabel(description, fraction) {
+  const span = document.createElement("span")
+  span.className = "card-item__item-label"
+  span.innerHTML = `${escapeHtml(description)}<span class="card-item__item-installment">${fraction}</span>`
+  return span
+}
+
+function buildItemAmount(amount) {
+  const span = document.createElement("span")
+  span.className = "card-item__item-amount"
+  span.textContent = formatBRL(amount)
+  return span
+}
+
+function buildItemActions({ inst, cardId, monthClosed }) {
+  const wrap = document.createElement("span")
+  wrap.className = "card-item__item-actions"
+
+  wrap.appendChild(buildActionButton({
+    iconPath:    PENCIL_PATH,
+    title:       "Editar compra",
+    eventName:   "purchase:edit-request",
+    inst, cardId, monthClosed,
+  }))
+
+  wrap.appendChild(buildActionButton({
+    iconPath:    TRASH_PATH,
+    title:       "Remover compra",
+    eventName:   "purchase:remove-request",
+    extraClass:  "card-item__item-action--danger",
+    inst, cardId, monthClosed,
+  }))
+
+  return wrap
+}
+
+function buildActionButton({ iconPath, title, eventName, inst, cardId, monthClosed, extraClass = "" }) {
+  const btn = document.createElement("button")
+  btn.type = "button"
+  btn.className = `card-item__item-action ${extraClass}`.trim()
+  btn.title = title
+  btn.setAttribute("aria-label", title)
+  btn.innerHTML = `<svg viewBox="0 0 24 24" aria-hidden="true">${iconPath}</svg>`
+
+  // Mês fechado tem prioridade na mensagem — é o motivo "macro" de bloqueio.
+  // Se ainda for parcelada com ciclo anterior fechado, cai no popover dela.
+  if (monthClosed) {
+    btn.disabled = true
+    btn.dataset.controller = "popover"
+    btn.dataset.popoverTextValue = POPOVER_CLOSED_MONTH_TEXT
+  } else if (inst.purchase_editable === false) {
+    btn.disabled = true
+    btn.dataset.controller = "popover"
+    btn.dataset.popoverTextValue = POPOVER_BLOCKED_TEXT
+  } else {
+    btn.addEventListener("click", () => {
+      window.dispatchEvent(new CustomEvent(eventName, {
+        detail: {
+          cardId,
+          purchaseId:        inst.purchase_id,
+          description:       inst.description,
+          totalAmount:       inst.purchase_total_amount,
+          installmentsCount: inst.installments_count,
+        },
+      }))
+    })
+  }
+
+  return btn
+}
+
+const PENCIL_PATH = `<path d="M4 20h4l10.5-10.5a2.121 2.121 0 0 0-3-3L5 17v3z"/><path d="M14.5 5.5l3 3"/>`
+const TRASH_PATH  = `<path d="M3 6h18"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/>`
+
 function firstDayOfCurrentMonth() {
   const now = new Date()
   return new Date(now.getFullYear(), now.getMonth(), 1)
@@ -557,6 +673,14 @@ function formatYMD(date) {
 
 function formatMonthLabel(date) {
   return date.toLocaleDateString("pt-BR", { month: "long", year: "numeric" })
+}
+
+// Label específico da barra de navegação ("Ciclo abril - 2026"). Os usos em
+// frases corridas (modal de fechar ciclo, notice) seguem com formatMonthLabel
+// pra ler natural ("fechar o ciclo de abril de 2026").
+function formatCycleLabel(date) {
+  const month = date.toLocaleDateString("pt-BR", { month: "long" })
+  return `Ciclo ${month} - ${date.getFullYear()}`
 }
 
 function parseYMD(str) {

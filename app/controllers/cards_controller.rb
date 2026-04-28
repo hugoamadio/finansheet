@@ -2,7 +2,8 @@ class CardsController < ApiController
   before_action :load_card, only: [:update, :destroy]
 
   def index
-    month = parse_month(params[:month]) || Date.current.beginning_of_month
+    # Sem ?month=, o boot cai no ciclo ativo (1º aberto a partir de hoje).
+    month = parse_month(params[:month]) || current_user.next_open_cycle_month
     cards = current_user.cards.order(:created_at)
 
     has_earlier_data = Installment

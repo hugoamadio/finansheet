@@ -165,6 +165,10 @@
     </form>
   </dialog>
 
+  <%# Modais independentes de editar/remover compra (ouvem eventos disparados aqui) %>
+  <%= render "shared/purchase_edit_modal" %>
+  <%= render "shared/purchase_remove_modal" %>
+
   <%# Modal de confirmação "Virar Mês" %>
   <dialog class="modal" data-cards-target="closeCycleModal">
     <header class="modal__header">

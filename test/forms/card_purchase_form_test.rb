@@ -102,6 +102,34 @@ class CardPurchaseFormTest < ActiveSupport::TestCase
     assert form.errors[:purchased_on].any?
   end
 
+  test "skips closed cycles when placing first installment" do
+    # Abril tá fechado → 1ª parcela pula pra maio.
+    @user.cycles.create!(reference_month: Date.new(2026, 4, 1), closed_at: Time.current)
+
+    form = CardPurchaseForm.new(
+      user: @user, card: @card, description: "X",
+      total_amount: 300, installments_count: 3,
+      purchased_on: Date.new(2026, 4, 28),
+    )
+    assert form.save
+
+    expected = [Date.new(2026, 5, 1), Date.new(2026, 6, 1), Date.new(2026, 7, 1)]
+    assert_equal expected, form.card_purchase.installments.order(:number).pluck(:due_month)
+  end
+
+  test "skips multiple consecutive closed cycles" do
+    @user.cycles.create!(reference_month: Date.new(2026, 4, 1), closed_at: Time.current)
+    @user.cycles.create!(reference_month: Date.new(2026, 5, 1), closed_at: Time.current)
+
+    form = CardPurchaseForm.new(
+      user: @user, card: @card, description: "X",
+      total_amount: 100, installments_count: 1,
+      purchased_on: Date.new(2026, 4, 28),
+    )
+    assert form.save
+    assert_equal Date.new(2026, 6, 1), form.card_purchase.installments.first.due_month
+  end
+
   test "validates positive total and installments_count" do
     form = CardPurchaseForm.new(
       user: @user, card: @card, description: "X",

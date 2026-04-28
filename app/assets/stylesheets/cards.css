@@ -6,7 +6,6 @@
 
 .cards-page {
   width: 100%;
-  max-width: 1200px;
 }
 
 .cards-page__header {
@@ -258,7 +257,7 @@
 
 .card-item__items li {
   display: flex;
-  align-items: baseline;
+  align-items: center;
   justify-content: space-between;
   gap: 0.5rem;
   border-bottom: 1px dashed rgba(255, 255, 255, 0.14);
@@ -283,6 +282,53 @@
 .card-item__item-amount {
   font-variant-numeric: tabular-nums;
   font-weight: 600;
+}
+
+/* Coluna fixa de ações (editar/remover) por item */
+.card-item__item-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.15rem;
+  margin-left: 0.4rem;
+}
+
+.card-item__item-action {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px; height: 26px;
+  padding: 0;
+  border-radius: 5px;
+  border: none;
+  background: rgba(255, 255, 255, 0.1);
+  color: #f8fafc;
+  cursor: pointer;
+  transition: background-color 120ms, color 120ms;
+}
+
+.card-item__item-action svg {
+  width: 14px; height: 14px;
+  stroke: currentColor;
+  fill: none;
+  stroke-width: 1.8;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.card-item__item-action:hover:not([disabled]) {
+  background: rgba(255, 255, 255, 0.22);
+}
+
+.card-item__item-action--danger:hover:not([disabled]) {
+  background: rgba(239, 68, 68, 0.55);
+  color: #fff;
+}
+
+/* Disabled mantém pointer-events pra mouseenter (popover) funcionar */
+.card-item__item-action[disabled] {
+  opacity: 0.4;
+  cursor: not-allowed;
+  pointer-events: auto;
 }
 
 .card-item__more {
@@ -354,6 +400,15 @@
 }
 
 .card-item__action--primary:hover { background: #ffffff; }
+
+/* Disabled mantém pointer-events pra mouseenter (popover) funcionar */
+.card-item__action[disabled],
+.card-item__action[disabled]:hover {
+  opacity: 0.4;
+  cursor: not-allowed;
+  pointer-events: auto;
+  background: rgba(255, 255, 255, 0.12);
+}
 
 /* === Card vazio (placeholder pra criar) === */
 

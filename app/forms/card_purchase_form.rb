@@ -61,8 +61,8 @@ class CardPurchaseForm
   end
 
   def first_due_month
-    # 1ª parcela cai sempre no mês da compra. best_day fica como
-    # informação visual/lembrete, sem afetar onde a parcela aparece.
-    Date.new(purchased_on.year, purchased_on.month, 1)
+    # 1ª parcela cai no mês da compra; se esse mês já tem ciclo fechado,
+    # `next_open_cycle_month` avança até o primeiro aberto.
+    user.next_open_cycle_month(Date.new(purchased_on.year, purchased_on.month, 1))
   end
 end
