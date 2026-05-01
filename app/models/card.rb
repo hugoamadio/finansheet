@@ -7,4 +7,5 @@ class Card < ApplicationRecord
 
   validates :pay_day,  numericality: { in: 1..31, only_integer: true }, allow_nil: true
   validates :best_day, numericality: { in: 1..31, only_integer: true }, allow_nil: true
+  validates :color, format: { with: /\A#\h{6}\z/ }, allow_nil: true
 end

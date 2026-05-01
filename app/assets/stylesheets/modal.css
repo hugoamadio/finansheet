@@ -82,6 +82,9 @@
   color: #334155;
 }
 
+/* Atributo `hidden` precisa vencer o `display: flex` da classe. */
+.form-field[hidden] { display: none; }
+
 .form-field input,
 .form-field select {
   padding: 0.55rem 0.75rem;
@@ -99,6 +102,34 @@
   outline: none;
   border-color: var(--brand);
   box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.15);
+}
+
+/* Variante inline pra checkbox + label numa única linha (com ícone de ajuda). */
+.form-field--inline {
+  flex-direction: row;
+  align-items: center;
+  gap: 0.5rem;
+  font-weight: 500;
+  cursor: pointer;
+}
+
+.form-field--inline input[type="checkbox"] {
+  width: auto;
+  margin: 0;
+  padding: 0;
+}
+
+.form-field__hint {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px; height: 18px;
+  font-size: 0.78rem;
+  color: var(--brand);
+  border: 1px solid currentColor;
+  border-radius: 999px;
+  cursor: help;
+  user-select: none;
 }
 
 .form-row {

@@ -15,7 +15,9 @@ Rails.application.routes.draw do
   # API JSON (chamada via fetch após render)
   scope :api, defaults: { format: :json } do
     resources :cards, only: [:index, :create, :update, :destroy] do
-      resources :purchases,    only: [:create, :update, :destroy], controller: "card_purchases"
+      resources :purchases,    only: [:create, :update, :destroy], controller: "card_purchases" do
+        member { patch :toggle_excluded }
+      end
       resources :installments, only: [:index],                     controller: "card_installments"
     end
 

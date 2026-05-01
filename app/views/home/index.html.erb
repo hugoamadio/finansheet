@@ -94,6 +94,11 @@
       </label>
 
       <label class="form-field">
+        Cor do cartão
+        <input type="color" name="color" value="#1d4ed8" data-cards-target="fieldColor">
+      </label>
+
+      <label class="form-field">
         Tipo
         <select name="mode" required data-cards-target="fieldMode">
           <option value="credit">Crédito</option>
@@ -151,9 +156,25 @@
         </label>
       </div>
 
-      <label class="form-field">
-        Data da compra
-        <input type="date" name="purchased_on" required data-cards-target="purchaseFieldDate" data-action="input->cards#updatePurchasePreview">
+      <label class="form-field form-field--inline">
+        <input type="checkbox" data-cards-target="purchaseFieldHasPaid" data-action="change->cards#togglePurchasePaid">
+        Já paguei algumas parcelas dessa compra
+        <span class="form-field__hint" data-controller="popover" data-popover-text-value="Marque se você já pagou parcelas em meses anteriores. O sistema vai cadastrar apenas as que faltam, começando com o número correto (ex.: 5ª/6). O valor total e a quantidade de parcelas continuam sendo da compra inteira.">ⓘ</span>
+      </label>
+
+      <label class="form-field" data-cards-target="purchaseFieldPaidWrapper" hidden>
+        Quantas parcelas já paguei?
+        <input type="number" min="1" max="48" data-cards-target="purchaseFieldPaidCount" data-action="input->cards#updatePurchasePreview">
+      </label>
+
+      <label class="form-field" data-cards-target="purchaseFieldDateWrapper">
+        Data da compra <span style="opacity:0.6;font-weight:400">(opcional, default hoje)</span>
+        <input type="date" data-cards-target="purchaseFieldDate" data-action="input->cards#updatePurchasePreview">
+      </label>
+
+      <label class="form-field" data-cards-target="purchaseFieldNextDueWrapper" hidden>
+        Mês da próxima parcela a vencer
+        <input type="month" data-cards-target="purchaseFieldNextDue" data-action="input->cards#updatePurchasePreview">
       </label>
 
       <div class="modal-purchase__preview" data-cards-target="purchasePreview" hidden></div>

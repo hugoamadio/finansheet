@@ -7,8 +7,20 @@ class CardPurchase < ApplicationRecord
   validates :total_amount,       numericality: { greater_than: 0 }
   validates :installments_count, numericality: { greater_than: 0, only_integer: true }
   validates :purchased_on,       presence: true
+  validates :installments_paid,
+            numericality: { greater_than_or_equal_to: 0, only_integer: true }
+  validate  :installments_paid_must_be_less_than_count
 
   def editable?
     installments.where.not(cycle_id: nil).none?
+  end
+
+  private
+
+  def installments_paid_must_be_less_than_count
+    return if installments_count.blank? || installments_paid.blank?
+    return if installments_paid < installments_count
+
+    errors.add(:installments_paid, "deve ser menor que o total de parcelas")
   end
 end

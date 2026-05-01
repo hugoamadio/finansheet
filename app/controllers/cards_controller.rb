@@ -58,7 +58,7 @@ class CardsController < ApiController
   end
 
   def card_params
-    params.require(:card).permit(:name, :bank, :mode, :pay_day, :best_day)
+    params.require(:card).permit(:name, :bank, :mode, :pay_day, :best_day, :color)
   end
 
   def serialize(card)
@@ -69,6 +69,7 @@ class CardsController < ApiController
       mode:     card.mode,
       pay_day:  card.pay_day,
       best_day: card.best_day,
+      color:    card.color,
     }
   end
 

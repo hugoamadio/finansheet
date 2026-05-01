@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_04_28_000000) do
+ActiveRecord::Schema[8.1].define(version: 2026_05_01_020000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pgcrypto"
@@ -19,7 +19,9 @@ ActiveRecord::Schema[8.1].define(version: 2026_04_28_000000) do
     t.uuid "card_id", null: false
     t.datetime "created_at", null: false
     t.text "description", null: false
+    t.boolean "excluded_from_summary", default: false, null: false
     t.integer "installments_count", default: 1, null: false
+    t.integer "installments_paid", default: 0, null: false
     t.date "purchased_on", null: false
     t.decimal "total_amount", precision: 12, scale: 2, null: false
     t.datetime "updated_at", null: false
@@ -27,18 +29,21 @@ ActiveRecord::Schema[8.1].define(version: 2026_04_28_000000) do
     t.index ["card_id"], name: "index_card_purchases_on_card_id"
     t.index ["user_id"], name: "index_card_purchases_on_user_id"
     t.check_constraint "installments_count >= 1", name: "card_purchases_installments_count_positive"
+    t.check_constraint "installments_paid >= 0 AND installments_paid < installments_count", name: "card_purchases_installments_paid_lt_count"
   end
 
   create_table "cards", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
     t.text "bank"
     t.integer "best_day"
+    t.string "color", limit: 7
     t.datetime "created_at", null: false
     t.string "mode", null: false
     t.text "name"
     t.integer "pay_day"
     t.datetime "updated_at", null: false
     t.check_constraint "best_day IS NULL OR best_day >= 1 AND best_day <= 31", name: "cards_best_day_range"
-    t.check_constraint "mode::text = ANY (ARRAY['credit'::character varying, 'debit'::character varying]::text[])", name: "cards_mode_check"
+    t.check_constraint "color IS NULL OR color::text ~ '^#[0-9A-Fa-f]{6}$'::text", name: "cards_color_hex_format"
+    t.check_constraint "mode::text = ANY (ARRAY['credit'::character varying::text, 'debit'::character varying::text])", name: "cards_mode_check"
     t.check_constraint "pay_day IS NULL OR pay_day >= 1 AND pay_day <= 31", name: "cards_pay_day_range"
   end
 

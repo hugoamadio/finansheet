@@ -22,12 +22,16 @@ module Purchases
         first_due_month = @card_purchase.installments.minimum(:due_month)
         first_due_month = @card_purchase.user.next_open_cycle_month(first_due_month)
 
+        # installments_paid não é editável pelo service — preservamos o valor
+        # original. A numeração das parcelas regeradas começa em paid+1.
+        paid = @card_purchase.installments_paid.to_i
+
         @card_purchase.update!(
           total_amount:       @total_amount,
           installments_count: @installments_count,
         )
         @card_purchase.installments.destroy_all
-        build_installments!(first_due_month: first_due_month)
+        build_installments!(first_due_month: first_due_month, paid: paid)
       end
 
       @card_purchase
@@ -35,16 +39,17 @@ module Purchases
 
     private
 
-    def build_installments!(first_due_month:)
+    def build_installments!(first_due_month:, paid:)
       total = @total_amount.to_d
       count = @installments_count.to_i
       base  = (total / count).floor(2)
       last  = total - base * (count - 1)
 
-      count.times do |i|
+      (count - paid).times do |i|
+        number = paid + i + 1
         @card_purchase.installments.create!(
-          number:    i + 1,
-          amount:    (i == count - 1 ? last : base),
+          number:    number,
+          amount:    (number == count ? last : base),
           due_month: first_due_month >> i,
         )
       end

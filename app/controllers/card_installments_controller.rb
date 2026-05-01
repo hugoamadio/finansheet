@@ -18,6 +18,9 @@ class CardInstallmentsController < ApiController
     render json: {
       month:                       month,
       month_total:                 month_scope.sum(:amount).to_f,
+      month_total_for_summary:     month_scope
+                                     .where(card_purchases: { excluded_from_summary: false })
+                                     .sum(:amount).to_f,
       total_open:                  open_scope.sum(:amount).to_f,
       month_installments:          month_records.map { |i| serialize(i, closed_purchase_ids) },
       month_installments_overflow: [month_count - ITEMS_LIMIT, 0].max,
@@ -60,6 +63,7 @@ class CardInstallmentsController < ApiController
       purchase_id:           purchase.id,
       purchase_total_amount: purchase.total_amount.to_f,
       purchase_editable:     !closed_purchase_ids.include?(purchase.id),
+      excluded_from_summary: purchase.excluded_from_summary,
     }
   end
 
