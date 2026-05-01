@@ -293,4 +293,8 @@
 
   .sidebar.is-open .sidebar-panel { transform: translateX(0); }
   .sidebar.is-open .sidebar-backdrop { display: block; }
+
+  /* Esconde o hambúrguer enquanto o drawer está aberto — ele cobriria o
+     panel (z-index 40 > 30). Usuário fecha clicando no backdrop. */
+  .sidebar.is-open .sidebar-toggle { display: none; }
 }

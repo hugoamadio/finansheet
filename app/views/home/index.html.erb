@@ -1,18 +1,22 @@
 <% content_for :title, "FinanSheet — Cartões" %>
 
 <section class="cards-page" data-controller="cards">
-  <header class="cards-page__header">
-    <h1 class="cards-page__title">Cartões</h1>
-    <button type="button" class="action-btn action-btn--primary" data-action="cards#openCreate">
-      <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true">
-        <line x1="12" y1="5" x2="12" y2="19"/>
-        <line x1="5" y1="12" x2="19" y2="12"/>
-      </svg>
-      <span>Novo cartão</span>
-    </button>
-  </header>
+  <%# Wrapper genérico: vira sticky no mobile (ver .page-sticky-top no
+      cards.css). Em desktop é só uma <div> sem efeito. Reutilizável em
+      qualquer página que precise fixar o topo em telas pequenas. %>
+  <div class="page-sticky-top">
+    <header class="cards-page__header">
+      <h1 class="cards-page__title">Cartões</h1>
+      <button type="button" class="action-btn action-btn--primary" data-action="cards#openCreate">
+        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true">
+          <line x1="12" y1="5" x2="12" y2="19"/>
+          <line x1="5" y1="12" x2="19" y2="12"/>
+        </svg>
+        <span>Novo cartão</span>
+      </button>
+    </header>
 
-  <nav class="month-nav">
+    <nav class="month-nav">
     <button type="button" class="month-nav__nav" data-action="cards#prevMonth"
             data-cards-target="prevButton" aria-label="Mês anterior" title="Mês anterior">
       <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
@@ -40,7 +44,8 @@
       </svg>
       <span data-cards-target="closeCycleLabel">Virar Ciclo</span>
     </button>
-  </nav>
+    </nav>
+  </div><%# /.page-sticky-top %>
 
   <div class="page-notice" data-cards-target="notice" hidden>
     <span data-cards-target="noticeText"></span>

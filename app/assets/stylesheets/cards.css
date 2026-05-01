@@ -8,12 +8,43 @@
   width: 100%;
 }
 
+/* === Sticky top genérico ===
+ * Wrapper que vira sticky no mobile pra fixar header + nav no topo da
+ * viewport. Desktop: só uma <div> sem efeito. Reutilizável em qualquer
+ * página com topo navegável. */
+.page-sticky-top {}
+
+@media (max-width: 767px) {
+  .page-sticky-top {
+    position: sticky;
+    top: 0;
+    z-index: 10;
+    background: #f8fafc;
+    /* Compensar o padding lateral do .app-content (2rem em mobile) pra
+       o sticky cobrir borda a borda. */
+    margin: 0 -2rem 1rem;
+    padding: 0.75rem 2rem;
+    box-shadow: 0 4px 8px -4px rgba(15, 23, 42, 0.08);
+  }
+
+  /* O hamburguer fixo (40×40 top-left) sobreporia o título — empurra
+     pra direita só no mobile. */
+  .page-sticky-top .cards-page__header { padding-left: 3rem; }
+}
+
 .cards-page__header {
   display: flex;
   align-items: center;
   justify-content: space-between;
   margin-bottom: 1.5rem;
   gap: 1rem;
+}
+
+@media (max-width: 767px) {
+  /* Wrapper já dá padding vertical: zera as margens internas pra evitar
+     duplicação de espaço no mobile. */
+  .cards-page__header { margin-bottom: 0.75rem; }
+  .month-nav         { margin-bottom: 0; }
 }
 
 .cards-page__title {
