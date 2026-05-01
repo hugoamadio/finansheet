@@ -25,6 +25,9 @@ Rails.application.routes.draw do
 
     get "incomes" => "incomes#show"
     put "incomes" => "incomes#upsert"
+
+    resources :fixed_expenses, only: [:index, :create, :update, :destroy]
+    resources :fixed_expense_payments, only: [:update]
   end
 
   # App

@@ -8,6 +8,7 @@
 @import "modal.css";
 @import "cards.css";
 @import "popover.css";
+@import "fixed_expenses.css";
 
 :root {
   --sidebar-width: 290px;

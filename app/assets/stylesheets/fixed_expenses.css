@@ -1,0 +1,293 @@
+/*
+ * Contas Fixas — sidebar (resumo) + modal (CRUD).
+ * Sidebar herda paleta dark da .sidebar; modal usa paleta clara
+ * compartilhada com os outros .modal.
+ */
+
+/* === Sidebar — bloco "Contas Fixas" === */
+
+.sidebar-fixed[hidden] { display: none; }
+
+.sidebar-fixed {
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid var(--sidebar-border);
+  border-radius: 8px;
+  padding: 0.75rem 0.85rem;
+  margin-bottom: 1rem;
+}
+
+.sidebar-fixed__header {
+  margin-bottom: 0.6rem;
+}
+
+.sidebar-fixed__title {
+  font-size: 0.7rem;
+  font-weight: 700;
+  color: var(--sidebar-muted);
+  margin: 0;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.sidebar-fixed__lines {
+  list-style: none;
+  margin: 0 0 0.6rem;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+}
+
+.sidebar-fixed__line {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  font-size: 0.78rem;
+  color: var(--sidebar-fg);
+}
+
+.sidebar-fixed__line--paid    strong { color: #86efac; }
+.sidebar-fixed__line--pending strong { color: #fcd34d; }
+.sidebar-fixed__line strong { font-variant-numeric: tabular-nums; font-weight: 600; }
+
+/* Mesmo padrão do .sidebar-logout: ícone + texto, full-width, hover
+ * com cor da feature (azul-claro pra "ver mais detalhes"). */
+.sidebar-fixed__action {
+  width: 100%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  padding: 0.55rem 0.75rem;
+  font-size: 0.82rem;
+  font-weight: 500;
+  color: var(--sidebar-fg);
+  background: transparent;
+  border: 1px solid var(--sidebar-border);
+  border-radius: 6px;
+  cursor: pointer;
+  transition: background-color 140ms, color 140ms, border-color 140ms;
+}
+
+.sidebar-fixed__action:hover {
+  background: rgba(96, 165, 250, 0.12);
+  color: #93c5fd;
+  border-color: rgba(96, 165, 250, 0.35);
+}
+
+.sidebar-fixed__action svg { flex-shrink: 0; }
+
+/* === Modal === */
+
+.modal--fixed-expenses {
+  width: min(640px, 92vw);
+  max-height: 90vh;
+}
+
+.modal--fixed-expenses .modal__body {
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+  padding: 1rem 1.25rem;
+  overflow-y: auto;
+}
+
+.fixed-expenses__closed-banner {
+  background: #fef3c7;
+  border: 1px solid #fde68a;
+  color: #92400e;
+  padding: 0.55rem 0.75rem;
+  border-radius: 6px;
+  font-size: 0.85rem;
+}
+
+.fixed-expenses__toolbar {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.fixed-expenses__form[hidden] { display: none; }
+
+.fixed-expenses__form {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  padding: 0.85rem 1rem;
+}
+
+.fixed-expenses__form-title {
+  margin: 0 0 0.25rem;
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: #0f172a;
+}
+
+.fixed-expenses__form .modal__footer {
+  margin: 0.25rem 0 0;
+  padding: 0;
+  border: none;
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.5rem;
+}
+
+/* Lista de itens */
+
+.fixed-expenses__list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.fixed-expenses__item {
+  display: grid;
+  grid-template-columns: 1fr auto auto;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.7rem 0.85rem;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  background: #ffffff;
+}
+
+.fixed-expenses__item--paid {
+  background: #f0fdf4;
+  border-color: #bbf7d0;
+}
+
+.fixed-expenses__item-info {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  min-width: 0;
+}
+
+.fixed-expenses__item-name {
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: #0f172a;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.fixed-expenses__item-due {
+  font-size: 0.78rem;
+  color: #64748b;
+}
+
+.fixed-expenses__installment {
+  display: inline-block;
+  margin-left: 0.4rem;
+  font-size: 0.72rem;
+  font-weight: 500;
+  color: #64748b;
+  background: #f1f5f9;
+  padding: 0.1rem 0.45rem;
+  border-radius: 999px;
+  letter-spacing: 0.02em;
+  font-variant-numeric: tabular-nums;
+}
+
+.fixed-expenses__edit-notice {
+  background: #eff6ff;
+  border: 1px solid #bfdbfe;
+  color: #1e3a8a;
+  padding: 0.5rem 0.75rem;
+  border-radius: 6px;
+  font-size: 0.82rem;
+}
+
+.fixed-expenses__item-amount {
+  font-variant-numeric: tabular-nums;
+  font-weight: 700;
+  font-size: 1rem;
+  color: #0f172a;
+}
+
+.fixed-expenses__item-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+}
+
+.fixed-expenses__btn-paid {
+  background: #ecfdf5;
+  color: #065f46;
+  border: 1px solid #a7f3d0;
+  font-size: 0.78rem;
+  font-weight: 500;
+  padding: 0.35rem 0.6rem;
+  border-radius: 5px;
+  cursor: pointer;
+  transition: background-color 120ms;
+}
+
+.fixed-expenses__btn-paid:hover:not([disabled]) { background: #d1fae5; }
+
+.fixed-expenses__item--paid .fixed-expenses__btn-paid {
+  background: #16a34a;
+  color: #ecfdf5;
+  border-color: #16a34a;
+}
+.fixed-expenses__item--paid .fixed-expenses__btn-paid:hover:not([disabled]) { background: #15803d; }
+
+.fixed-expenses__btn-edit,
+.fixed-expenses__btn-remove {
+  background: transparent;
+  border: 1px solid #cbd5e1;
+  font-size: 0.85rem;
+  width: 30px; height: 30px;
+  border-radius: 5px;
+  cursor: pointer;
+  transition: background-color 120ms;
+}
+
+.fixed-expenses__btn-edit:hover:not([disabled])   { background: #f1f5f9; }
+.fixed-expenses__btn-remove:hover:not([disabled]) { background: #fee2e2; border-color: #fca5a5; }
+
+.fixed-expenses__btn-paid[disabled],
+.fixed-expenses__btn-edit[disabled],
+.fixed-expenses__btn-remove[disabled] {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.fixed-expenses__empty {
+  text-align: center;
+  padding: 2rem 1rem;
+  color: #64748b;
+  font-size: 0.9rem;
+  background: #f8fafc;
+  border: 1px dashed #cbd5e1;
+  border-radius: 8px;
+}
+
+.fixed-expenses__error {
+  text-align: center;
+  padding: 1rem;
+  color: #b91c1c;
+  font-size: 0.85rem;
+}
+
+.fixed-expenses__totals {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  padding-top: 0.75rem;
+  border-top: 1px solid #e2e8f0;
+  font-size: 0.9rem;
+  color: #334155;
+}
+
+.fixed-expenses__totals strong {
+  font-variant-numeric: tabular-nums;
+  color: #0f172a;
+}

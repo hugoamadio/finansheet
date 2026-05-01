@@ -3,19 +3,43 @@
 <section class="cards-page" data-controller="cards">
   <header class="cards-page__header">
     <h1 class="cards-page__title">Cartões</h1>
-    <button type="button" class="btn btn--primary" data-action="cards#openCreate">+ Novo cartão</button>
+    <button type="button" class="action-btn action-btn--primary" data-action="cards#openCreate">
+      <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true">
+        <line x1="12" y1="5" x2="12" y2="19"/>
+        <line x1="5" y1="12" x2="19" y2="12"/>
+      </svg>
+      <span>Novo cartão</span>
+    </button>
   </header>
 
   <nav class="month-nav">
-    <button type="button" class="month-nav__arrow" data-action="cards#prevMonth" data-cards-target="prevButton">‹ Mês anterior</button>
+    <button type="button" class="month-nav__nav" data-action="cards#prevMonth"
+            data-cards-target="prevButton" aria-label="Mês anterior" title="Mês anterior">
+      <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <polyline points="15 18 9 12 15 6"/>
+      </svg>
+    </button>
 
     <div class="month-nav__center">
       <span class="month-nav__label" data-cards-target="monthLabel">—</span>
       <span class="month-nav__closed-tag" data-cards-target="closedTag" hidden>Fechado</span>
     </div>
 
-    <button type="button" class="month-nav__arrow" data-action="cards#nextMonth">Próximo mês ›</button>
-    <button type="button" class="month-nav__close-cycle" data-action="cards#openCloseCycle" data-cards-target="closeCycleButton">Virar Mês</button>
+    <button type="button" class="month-nav__nav" data-action="cards#nextMonth"
+            aria-label="Próximo mês" title="Próximo mês">
+      <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <polyline points="9 18 15 12 9 6"/>
+      </svg>
+    </button>
+
+    <button type="button" class="action-btn action-btn--success" data-action="cards#openCloseCycle"
+            data-cards-target="closeCycleButton">
+      <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" data-cards-target="closeCycleIcon">
+        <polyline points="23 4 23 10 17 10"/>
+        <path d="M20.49 15A9 9 0 1 1 18 6.36L23 10"/>
+      </svg>
+      <span data-cards-target="closeCycleLabel">Virar Ciclo</span>
+    </button>
   </nav>
 
   <div class="page-notice" data-cards-target="notice" hidden>
@@ -190,15 +214,15 @@
   <%= render "shared/purchase_edit_modal" %>
   <%= render "shared/purchase_remove_modal" %>
 
-  <%# Modal de confirmação "Virar Mês" %>
+  <%# Modal de confirmação "Virar Ciclo" %>
   <dialog class="modal" data-cards-target="closeCycleModal">
     <header class="modal__header">
-      <h2 class="modal__title">Virar mês</h2>
+      <h2 class="modal__title">Virar ciclo</h2>
       <button type="button" class="modal__close" data-action="cards#closeCloseCycleModal" aria-label="Fechar">×</button>
     </header>
     <div class="modal__body">
       <p style="margin: 0 0 1rem;">
-        Você está prestes a fechar o ciclo de
+        Você está prestes a virar o ciclo de
         <strong data-cards-target="closeCycleMonth">—</strong>.
       </p>
       <div data-cards-target="closeCycleSummary" style="background: #f1f5f9; border-radius: 6px; padding: 0.7rem 0.9rem; font-size: 0.9rem;"></div>

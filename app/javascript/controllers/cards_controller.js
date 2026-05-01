@@ -20,7 +20,7 @@ export default class extends Controller {
     "purchaseFieldDateWrapper", "purchaseFieldDate",
     "purchaseFieldNextDueWrapper", "purchaseFieldNextDue",
     "purchasePreview",
-    "monthLabel", "prevButton", "closedTag", "closeCycleButton",
+    "monthLabel", "prevButton", "closedTag", "closeCycleButton", "closeCycleIcon", "closeCycleLabel",
     "closeCycleModal", "closeCycleMonth", "closeCycleSummary", "closeCycleConfirm",
     "notice", "noticeText", "noticeAction",
   ]
@@ -215,10 +215,13 @@ export default class extends Controller {
     const closed = !!this.monthClosedAt
     this.closedTagTarget.hidden = !closed
     this.closeCycleButtonTarget.disabled = closed
-    this.closeCycleButtonTarget.textContent = closed ? "Mês fechado" : "Virar Mês"
+    this.closeCycleLabelTarget.textContent = closed ? "Ciclo fechado" : "Virar Ciclo"
+    this.closeCycleIconTarget.innerHTML = closed
+      ? CLOSE_CYCLE_LOCKED_SVG
+      : CLOSE_CYCLE_ACTIVE_SVG
   }
 
-  // ---- Modal "Virar Mês" ----
+  // ---- Modal "Virar Ciclo" ----
 
   openCloseCycle() {
     if (this.monthClosedAt) return
@@ -260,14 +263,14 @@ export default class extends Controller {
       })
       if (!resp.ok) {
         const data = await resp.json().catch(() => ({}))
-        alert((data.errors || ["Erro ao fechar o mês"]).join(", "))
+        alert((data.errors || ["Erro ao virar o ciclo"]).join(", "))
         return
       }
       this.closeCloseCycleModal()
       await this.loadCards({ withFade: true })
     } catch (err) {
       console.error("[cards] close cycle failed", err)
-      alert("Erro ao fechar o mês.")
+      alert("Erro ao virar o ciclo.")
     } finally {
       this.closeCycleConfirmTarget.disabled = false
       this.closeCycleConfirmTarget.textContent = "Confirmar"
@@ -560,7 +563,7 @@ export default class extends Controller {
 
   // Liga/desliga "não considerar no resumo do ciclo" pra uma compra inteira.
   // O totalizador do cartão (mês/aberto) continua somando — só a sidebar e o
-  // resumo do "Virar Mês" deixam de contar. Permitido em qualquer estado
+  // resumo do "Virar Ciclo" deixam de contar. Permitido em qualquer estado
   // (mês fechado / parcela em ciclo fechado) — flag puramente visual.
   async toggleExcluded(cardId, purchaseId, currentValue) {
     try {
@@ -729,7 +732,7 @@ const POPOVER_BLOCKED_TEXT =
   "Não é possível editar/excluir essa compra: ela tem parcelas em ciclos anteriores já fechados."
 
 const POPOVER_CLOSED_MONTH_TEXT =
-  "Mês fechado — não é possível alterar lançamentos deste ciclo."
+  "Ciclo fechado — não é possível alterar lançamentos."
 
 function buildItemLabel(description, fraction) {
   const span = document.createElement("span")
@@ -809,7 +812,7 @@ function buildActionButton({ iconPath, title, eventName, inst, cardId, monthClos
   btn.setAttribute("aria-label", title)
   btn.innerHTML = `<svg viewBox="0 0 24 24" aria-hidden="true">${iconPath}</svg>`
 
-  // Mês fechado tem prioridade na mensagem — é o motivo "macro" de bloqueio.
+  // Ciclo fechado tem prioridade na mensagem — é o motivo "macro" de bloqueio.
   // Se ainda for parcelada com ciclo anterior fechado, cai no popover dela.
   if (monthClosed) {
     btn.disabled = true
@@ -835,6 +838,10 @@ function buildActionButton({ iconPath, title, eventName, inst, cardId, monthClos
 
   return btn
 }
+
+// SVGs do botão "Virar Ciclo": ativo (seta circular) vs fechado (cadeado).
+const CLOSE_CYCLE_ACTIVE_SVG = `<polyline points="23 4 23 10 17 10"/><path d="M20.49 15A9 9 0 1 1 18 6.36L23 10"/>`
+const CLOSE_CYCLE_LOCKED_SVG = `<rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/>`
 
 const PENCIL_PATH = `<path d="M4 20h4l10.5-10.5a2.121 2.121 0 0 0-3-3L5 17v3z"/><path d="M14.5 5.5l3 3"/>`
 const TRASH_PATH  = `<path d="M3 6h18"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/>`

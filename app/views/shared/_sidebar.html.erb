@@ -46,6 +46,44 @@
       </footer>
     </section>
 
+    <%# Contas Fixas — resumo na sidebar. Componente próprio que faz suas
+        próprias requests. Botão "Ver detalhes" abre modal dedicado. %>
+    <section class="sidebar-fixed" data-controller="fixed-expenses-summary"
+             data-fixed-expenses-summary-target="root" hidden>
+      <header class="sidebar-fixed__header">
+        <h2 class="sidebar-fixed__title">Contas Fixas</h2>
+      </header>
+      <ul class="sidebar-fixed__lines">
+        <li class="sidebar-fixed__line">
+          <span>Total</span>
+          <strong data-fixed-expenses-summary-target="total">R$ 0,00</strong>
+        </li>
+        <li class="sidebar-fixed__line sidebar-fixed__line--paid">
+          <span>Pagas</span>
+          <strong data-fixed-expenses-summary-target="paid">R$ 0,00</strong>
+        </li>
+        <li class="sidebar-fixed__line sidebar-fixed__line--pending"
+            data-fixed-expenses-summary-target="pendingRow" hidden>
+          <span>Pendentes</span>
+          <strong data-fixed-expenses-summary-target="pending">R$ 0,00</strong>
+        </li>
+      </ul>
+      <button type="button" class="sidebar-fixed__action"
+              data-action="click->fixed-expenses-summary#openModal">
+        <svg viewBox="0 0 24 24" width="16" height="16" fill="none"
+             stroke="currentColor" stroke-width="2" stroke-linecap="round"
+             stroke-linejoin="round" aria-hidden="true">
+          <line x1="8" y1="6"  x2="21" y2="6"/>
+          <line x1="8" y1="12" x2="21" y2="12"/>
+          <line x1="8" y1="18" x2="21" y2="18"/>
+          <circle cx="4" cy="6"  r="1"/>
+          <circle cx="4" cy="12" r="1"/>
+          <circle cx="4" cy="18" r="1"/>
+        </svg>
+        Ver detalhes
+      </button>
+    </section>
+
     <div class="sidebar-footer">
       <button type="button"
               class="sidebar-logout"

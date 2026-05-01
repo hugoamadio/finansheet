@@ -151,28 +151,38 @@
 
 .sidebar-cycle__line--income { font-weight: 600; }
 
+/* Pílula esmeralda — combina com a paleta de "A receber" (positivo) e
+ * sai do tom translúcido genérico. Hover ganha brilho e lift sutil. */
 .sidebar-cycle__action {
-  background: transparent;
-  border: 1px solid var(--sidebar-border);
-  color: var(--sidebar-fg);
-  font-size: 0.7rem;
-  font-weight: 500;
-  padding: 0.15rem 0.5rem;
+  background: rgba(52, 211, 153, 0.14);
+  border: 1px solid rgba(52, 211, 153, 0.4);
+  color: #6ee7b7;
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  padding: 0.2rem 0.7rem;
   border-radius: 999px;
   cursor: pointer;
-  transition: background-color 120ms, color 120ms, border-color 120ms;
+  transition: background-color 140ms, color 140ms, border-color 140ms,
+              transform 140ms, box-shadow 140ms;
 }
 
 .sidebar-cycle__action:hover:not(:disabled) {
-  background: rgba(255, 255, 255, 0.08);
-  color: #ffffff;
-  border-color: rgba(255, 255, 255, 0.25);
+  background: rgba(52, 211, 153, 0.24);
+  color: #a7f3d0;
+  border-color: rgba(52, 211, 153, 0.6);
+  transform: translateY(-1px);
+  box-shadow: 0 3px 10px -2px rgba(16, 185, 129, 0.3);
 }
 
+.sidebar-cycle__action:active:not(:disabled) { transform: translateY(0); }
+
 .sidebar-cycle__action[disabled] {
-  opacity: 0.4;
+  opacity: 0.35;
   cursor: not-allowed;
   pointer-events: auto;
+  transform: none;
+  box-shadow: none;
 }
 
 .sidebar-cycle__footer {

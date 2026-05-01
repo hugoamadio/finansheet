@@ -11,15 +11,28 @@ export default class extends Controller {
 
   connect() {
     this.state = null
+    this.fixedExpensesTotal = 0
+
     this.onUpdate = (event) => {
       this.state = event.detail ?? null
       this.render()
     }
-    window.addEventListener("cycle:summary-update", this.onUpdate)
+    // Total de contas fixas chega via fixed_expenses_summary_controller —
+    // mantemos o último valor conhecido e re-renderizamos quando muda.
+    this.onFixedExpenses = (event) => {
+      const eventMonth = event.detail?.month
+      if (eventMonth && this.state?.month && eventMonth !== this.state.month) return
+      this.fixedExpensesTotal = Number(event.detail?.total ?? 0)
+      this.render()
+    }
+
+    window.addEventListener("cycle:summary-update",        this.onUpdate)
+    window.addEventListener("cycle:fixed-expenses-update", this.onFixedExpenses)
   }
 
   disconnect() {
-    window.removeEventListener("cycle:summary-update", this.onUpdate)
+    window.removeEventListener("cycle:summary-update",        this.onUpdate)
+    window.removeEventListener("cycle:fixed-expenses-update", this.onFixedExpenses)
   }
 
   openIncome() {
@@ -38,7 +51,8 @@ export default class extends Controller {
     const { monthLabel, expectedIncome, monthClosed, cardLines } = this.state
     const hasIncome = expectedIncome != null
     const cardsTotal = (cardLines ?? []).reduce((sum, l) => sum + Number(l.total), 0)
-    const balance = (expectedIncome ?? 0) - cardsTotal
+    const fixedTotal = Number(this.fixedExpensesTotal ?? 0)
+    const balance = (expectedIncome ?? 0) - cardsTotal - fixedTotal
 
     this.monthTarget.textContent = monthLabel ?? ""
 
@@ -47,7 +61,7 @@ export default class extends Controller {
     const incomeBtn    = monthClosed
       ? `<button type="button" class="sidebar-cycle__action" disabled
                  data-controller="popover"
-                 data-popover-text-value="Mês fechado — não é possível alterar lançamentos deste ciclo.">${incomeAction}</button>`
+                 data-popover-text-value="Ciclo fechado — não é possível alterar lançamentos.">${incomeAction}</button>`
       : `<button type="button" class="sidebar-cycle__action"
                  data-action="cycle-summary#openIncome">${incomeAction}</button>`
 
@@ -62,6 +76,11 @@ export default class extends Controller {
            <span class="sidebar-cycle__line-name">${escapeHtml(l.name || "—")}</span>
            <span class="sidebar-cycle__value sidebar-cycle__value--debit">− ${formatBRL(l.total)}</span>
          </li>`),
+      ...(fixedTotal > 0 ? [`
+         <li class="sidebar-cycle__line">
+           <span class="sidebar-cycle__line-name">Contas Fixas</span>
+           <span class="sidebar-cycle__value sidebar-cycle__value--debit">− ${formatBRL(fixedTotal)}</span>
+         </li>`] : []),
     ]
 
     this.linesTarget.innerHTML = lines.join("")

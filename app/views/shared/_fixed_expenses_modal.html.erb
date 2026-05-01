@@ -1,0 +1,114 @@
+<%# Modal global de Contas Fixas. Aberto via evento
+    "fixed-expenses:open-request" disparado pela sidebar. Componente
+    auto-suficiente: faz suas próprias requests pra CRUD + status. %>
+<dialog class="modal modal--fixed-expenses"
+        data-controller="fixed-expenses-modal"
+        data-fixed-expenses-modal-target="dialog">
+
+  <header class="modal__header">
+    <h2 class="modal__title">
+      Contas Fixas — <span data-fixed-expenses-modal-target="monthLabel">—</span>
+    </h2>
+    <button type="button" class="modal__close"
+            data-action="click->fixed-expenses-modal#close" aria-label="Fechar">×</button>
+  </header>
+
+  <div class="modal__body">
+    <div class="fixed-expenses__closed-banner" data-fixed-expenses-modal-target="closedBanner" hidden>
+      Esse mês está fechado. Edições só na definição da conta — afetam apenas meses abertos.
+    </div>
+
+    <div class="fixed-expenses__toolbar">
+      <button type="button" class="btn btn--primary"
+              data-fixed-expenses-modal-target="addButton"
+              data-action="click->fixed-expenses-modal#openCreate">
+        + Nova conta fixa
+      </button>
+    </div>
+
+    <%# Form inline (criar/editar). Aparece quando o usuário clica em
+        "+ Nova conta fixa" ou no botão de editar de um item. %>
+    <form class="fixed-expenses__form"
+          data-fixed-expenses-modal-target="form"
+          data-action="submit->fixed-expenses-modal#submitForm" hidden>
+      <h3 class="fixed-expenses__form-title" data-fixed-expenses-modal-target="formTitle">Nova conta fixa</h3>
+      <input type="hidden" data-fixed-expenses-modal-target="formId">
+
+      <label class="form-field">
+        Nome
+        <input type="text" placeholder="Ex.: Aluguel" required
+               data-fixed-expenses-modal-target="fieldName">
+      </label>
+
+      <div class="form-row">
+        <label class="form-field">
+          Valor (R$)
+          <input type="number" step="0.01" min="0.01" required
+                 data-fixed-expenses-modal-target="fieldAmount">
+        </label>
+        <label class="form-field">
+          Vence dia (1-31)
+          <input type="number" min="1" max="31"
+                 data-fixed-expenses-modal-target="fieldDueDay">
+        </label>
+      </div>
+
+      <%# Bloco de parcelamento — só visível ao criar (no editar fica oculto). %>
+      <div data-fixed-expenses-modal-target="parceledBlock">
+        <label class="form-field form-field--inline">
+          <input type="checkbox" data-fixed-expenses-modal-target="fieldParceled"
+                 data-action="change->fixed-expenses-modal#toggleParceled">
+          Compra parcelada
+          <span class="form-field__hint" data-controller="popover"
+                data-popover-text-value="Marque se essa conta tem fim — ex: sofá em 10×. A conta some automaticamente quando a última parcela passa. Se já pagou parte das parcelas, informe quantas e o mês da próxima a vencer.">ⓘ</span>
+        </label>
+
+        <div data-fixed-expenses-modal-target="parceledFields" hidden>
+          <div class="form-row">
+            <label class="form-field">
+              Total de parcelas
+              <input type="number" min="2" max="120"
+                     data-fixed-expenses-modal-target="fieldInstallmentsCount">
+            </label>
+            <label class="form-field">
+              Já paguei
+              <input type="number" min="0" max="120" value="0"
+                     data-fixed-expenses-modal-target="fieldInstallmentsPaid">
+            </label>
+          </div>
+          <label class="form-field">
+            Mês da próxima parcela a vencer
+            <input type="month" data-fixed-expenses-modal-target="fieldNextDueMonth">
+          </label>
+        </div>
+      </div>
+
+      <%# Aviso quando estiver editando uma compra parcelada — campos não editáveis. %>
+      <div class="fixed-expenses__edit-notice"
+           data-fixed-expenses-modal-target="editNotice" hidden></div>
+
+      <div class="modal__footer">
+        <button type="button" class="btn btn--ghost"
+                data-fixed-expenses-modal-target="formCancel"
+                data-action="click->fixed-expenses-modal#closeForm">Cancelar</button>
+        <button type="submit" class="btn btn--primary"
+                data-fixed-expenses-modal-target="formSubmit">Salvar</button>
+      </div>
+    </form>
+
+    <ul class="fixed-expenses__list" data-fixed-expenses-modal-target="list"></ul>
+
+    <div class="fixed-expenses__empty" data-fixed-expenses-modal-target="empty" hidden>
+      Nenhuma conta fixa cadastrada. Clique em "+ Nova conta fixa" pra começar.
+    </div>
+
+    <footer class="fixed-expenses__totals">
+      <div>
+        Total: <strong data-fixed-expenses-modal-target="total">R$ 0,00</strong>
+      </div>
+      <div>
+        Pagas: <strong data-fixed-expenses-modal-target="paid">R$ 0,00</strong>
+      </div>
+    </footer>
+  </div>
+</dialog>

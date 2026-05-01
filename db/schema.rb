@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_05_01_020000) do
+ActiveRecord::Schema[8.1].define(version: 2026_05_01_030000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pgcrypto"
@@ -77,11 +77,15 @@ ActiveRecord::Schema[8.1].define(version: 2026_05_01_020000) do
     t.decimal "amount", precision: 12, scale: 2, null: false
     t.datetime "created_at", null: false
     t.integer "due_day"
+    t.integer "installments_count"
+    t.integer "installments_paid", default: 0, null: false
     t.text "name", null: false
+    t.date "start_month"
     t.datetime "updated_at", null: false
     t.uuid "user_id", null: false
     t.index ["user_id"], name: "index_fixed_expenses_on_user_id"
     t.check_constraint "due_day IS NULL OR due_day >= 1 AND due_day <= 31", name: "fixed_expenses_due_day_range"
+    t.check_constraint "installments_count IS NULL AND start_month IS NULL OR installments_count IS NOT NULL AND start_month IS NOT NULL AND installments_paid >= 0 AND installments_paid < installments_count", name: "fixed_expenses_installments_consistency"
   end
 
   create_table "incomes", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
