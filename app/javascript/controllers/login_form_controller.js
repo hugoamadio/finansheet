@@ -32,7 +32,7 @@ export default class extends Controller {
       if (resp.ok && data.success && data.token) {
         localStorage.setItem("auth_token", data.token)
         localStorage.removeItem("current_user")
-        window.location.href = "/"
+        window.location.href = "/dashboard"
         return
       }
 

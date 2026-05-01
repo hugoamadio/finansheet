@@ -31,5 +31,9 @@ Rails.application.routes.draw do
   end
 
   # App
-  root "home#index"
+  get "dashboard" => "home#index", as: :dashboard
+
+  # Landing comercial pública — fica em / pra ser a primeira impressão
+  # quando alguém chega no domínio sem estar logado.
+  root "landing#index"
 end

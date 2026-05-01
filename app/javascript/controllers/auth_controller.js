@@ -8,12 +8,16 @@ import { Controller } from "@hotwired/stimulus"
 //   2. Token + user cacheado             → expõe em window.currentUser + valida em background
 //   3. Token sem cache                   → busca em /me, cacheia, expõe
 //   4. /me responde 401 a qualquer hora  → limpa localStorage + redireciona pra /login
-//   5. Estando em /login já autenticado  → manda pra /
+//   5. Estando em /login já autenticado  → manda pra /dashboard
+//
+// Importante: a landing pública em "/" usa o layout "marketing", que
+// NÃO monta esse controller — visitantes sem token não são empurrados
+// pra /login lá. Esse controller só vive em páginas autenticadas + /login.
 export default class extends Controller {
   static TOKEN_KEY = "auth_token"
   static USER_KEY  = "current_user"
   static LOGIN_PATH = "/login"
-  static HOME_PATH  = "/"
+  static HOME_PATH  = "/dashboard"
 
   connect() {
     this.bootstrap().catch((err) => console.error("[auth] bootstrap failed", err))
