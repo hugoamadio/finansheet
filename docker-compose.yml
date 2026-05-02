@@ -1,32 +1,4 @@
-# docker-compose.yml — EXCLUSIVO PRA DESENVOLVIMENTO.
-#
-# Sobe:
-#   - db / banco-uso-hugo:  Postgres persistente (cada um com seu volume).
-#                           Apenas UM deve estar ativo por vez — o outro
-#                           fica comentado.
-#   - app:                  builda o Dockerfile (target=development) e sobe
-#                           o Rails com hot reload via bind mount do código.
-#
-# Todas as credenciais/valores vêm do .env via `env_file:` — o Dockerfile
-# e este arquivo NÃO contêm nenhum segredo ou valor de banco.
-#
-# ============================================================
-# COMO TROCAR DE BANCO
-# ============================================================
-# 1. Em `services:` comente o bloco do banco que NÃO vai usar e descomente
-#    o que vai usar. Os volumes são isolados (postgres_data x
-#    postgres_data_hugo) — nenhum dado é perdido ao alternar.
-# 2. Em `app.depends_on` faça o mesmo: comente um, descomente outro.
-# 3. No `.env` troque POSTGRES_HOST pro nome do service ativo
-#    (db ou banco-uso-hugo).
-#
-# Uso:
-#   docker compose up --build
-
 services:
-  # ============================================================
-  # BANCO 1 — db (padrão)
-  # ============================================================
   # db:
   #   image: postgres:16-alpine
   #   env_file: .env
@@ -44,10 +16,6 @@ services:
   #     interval: 5s
   #     timeout: 5s
   #     retries: 10
-
-  # ============================================================
-  # BANCO 2 — banco-uso-hugo (alternativo)
-  # ============================================================
   banco-uso-hugo:
     image: postgres:16-alpine
     env_file: .env
@@ -69,19 +37,8 @@ services:
     ports:
       - "${PORT}:${PORT}"
     volumes:
-      # Bind mount do código — é o que habilita hot reload.
       - .:/rails
-      # Volume nomeado pros gems — sobrevive entre restarts, não colide
-      # com o mount do código em /rails (BUNDLE_PATH=/usr/local/bundle).
       - bundle_cache:/usr/local/bundle
-    depends_on:
-      # Mantenha em sintonia com o banco ativo acima.
-      # === BANCO 1 — db ===
-      # db:
-      #   condition: service_healthy
-      # === BANCO 2 — banco-uso-hugo ===
-      banco-uso-hugo:
-        condition: service_healthy
     command: >
       bash -c "rm -f tmp/pids/server.pid &&
                bundle install &&
