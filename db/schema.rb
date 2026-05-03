@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_05_01_030000) do
+ActiveRecord::Schema[8.1].define(version: 2026_05_01_060000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pgcrypto"
@@ -127,11 +127,14 @@ ActiveRecord::Schema[8.1].define(version: 2026_05_01_030000) do
   create_table "users", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
     t.datetime "created_at", null: false
     t.string "email", null: false
-    t.string "password_digest", null: false
+    t.string "password_digest"
+    t.string "provider"
     t.integer "salary_day"
     t.boolean "salary_on_last_day", default: false, null: false
+    t.string "uid"
     t.datetime "updated_at", null: false
     t.index ["email"], name: "index_users_on_email", unique: true
+    t.index ["provider", "uid"], name: "idx_users_provider_uid", unique: true, where: "(provider IS NOT NULL)"
     t.check_constraint "NOT (salary_day IS NOT NULL AND salary_on_last_day = true)", name: "users_salary_day_xor_last_day"
     t.check_constraint "salary_day IS NULL OR salary_day >= 1 AND salary_day <= 31", name: "users_salary_day_range"
   end

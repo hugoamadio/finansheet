@@ -1,0 +1,43 @@
+<% content_for :title, "Criar conta · FinanSheet" %>
+
+<div class="login-page">
+  <div class="login-card">
+    <%= image_tag "logo.svg", alt: "FinanSheet", class: "login-logo" %>
+
+    <%# Mesmo callback OAuth serve cadastro e login: se o email do Google
+        já existe, linka; se não, cria. %>
+    <%= button_to "/auth/google_oauth2", method: :post,
+                  data: { turbo: false }, class: "btn-google" do %>
+      <svg viewBox="0 0 18 18" width="18" height="18" aria-hidden="true">
+        <path fill="#4285F4" d="M17.64 9.2c0-.64-.06-1.25-.16-1.84H9v3.48h4.84a4.14 4.14 0 0 1-1.79 2.71v2.26h2.9c1.7-1.56 2.69-3.87 2.69-6.61z"/>
+        <path fill="#34A853" d="M9 18c2.43 0 4.47-.8 5.96-2.18l-2.9-2.26c-.8.54-1.83.86-3.06.86-2.36 0-4.35-1.59-5.06-3.73H.92v2.34A9 9 0 0 0 9 18z"/>
+        <path fill="#FBBC05" d="M3.94 10.69a5.4 5.4 0 0 1 0-3.38V4.97H.92a9 9 0 0 0 0 8.06l3.02-2.34z"/>
+        <path fill="#EA4335" d="M9 3.58c1.32 0 2.51.45 3.44 1.35l2.58-2.58A9 9 0 0 0 .92 4.97l3.02 2.34C4.65 5.17 6.64 3.58 9 3.58z"/>
+      </svg>
+      <span>Continuar com Google</span>
+    <% end %>
+
+    <div class="auth-divider"><span>ou</span></div>
+
+    <form data-controller="signup-form" data-action="submit->signup-form#submit" novalidate>
+      <div data-signup-form-target="error" class="error-message" hidden></div>
+
+      <label>
+        Email
+        <input type="email" name="email" data-signup-form-target="email" required autocomplete="email">
+      </label>
+
+      <label>
+        Senha
+        <input type="password" name="password" data-signup-form-target="password"
+               required minlength="8" autocomplete="new-password">
+      </label>
+
+      <button type="submit" data-signup-form-target="submit">Cadastrar</button>
+
+      <p style="text-align:center; font-size: 0.875rem; color: #475569; margin-top: 1rem;">
+        Já tem conta? <%= link_to "Entrar", login_path, style: "color: var(--brand); font-weight: 600;" %>
+      </p>
+    </form>
+  </div>
+</div>

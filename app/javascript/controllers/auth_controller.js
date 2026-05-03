@@ -4,38 +4,48 @@ import { Controller } from "@hotwired/stimulus"
 // Anexado ao <body data-controller="auth"> — roda em TODA página.
 //
 // Regras:
-//   1. Sem token em localStorage         → redireciona pra /login (exceto se já estiver lá)
+//   1. Sem token em localStorage         → redireciona pra /login (exceto se já estiver numa página pública de auth)
 //   2. Token + user cacheado             → expõe em window.currentUser + valida em background
 //   3. Token sem cache                   → busca em /me, cacheia, expõe
 //   4. /me responde 401 a qualquer hora  → limpa localStorage + redireciona pra /login
-//   5. Estando em /login já autenticado  → manda pra /dashboard
+//   5. Já autenticado em /login ou /signup → manda pra /dashboard
 //
-// Importante: a landing pública em "/" usa o layout "marketing", que
-// NÃO monta esse controller — visitantes sem token não são empurrados
-// pra /login lá. Esse controller só vive em páginas autenticadas + /login.
+// Páginas públicas de auth (login + signup) usam o mesmo layout `auth`,
+// que monta esse controller. Pra elas não rola redirect-pra-login quando
+// não tem token (senão o user nunca veria a tela de cadastro).
+//
+// A landing em "/" usa o layout "marketing" (sem esse controller), então
+// segue 100% pública independentemente do estado de auth.
 export default class extends Controller {
   static TOKEN_KEY = "auth_token"
   static USER_KEY  = "current_user"
-  static LOGIN_PATH = "/login"
-  static HOME_PATH  = "/dashboard"
+  static LOGIN_PATH  = "/login"
+  static SIGNUP_PATH = "/signup"
+  static HOME_PATH   = "/dashboard"
+  static AUTH_PATHS  = ["/login", "/signup"]
 
   connect() {
     this.bootstrap().catch((err) => console.error("[auth] bootstrap failed", err))
   }
 
   async bootstrap() {
+    // OAuth callback redireciona pra /dashboard?token=… — capturamos antes
+    // de qualquer outra coisa, salvamos no localStorage e limpamos a URL
+    // pra não vazar o token em logs/Referer/histórico.
+    this.maybeCaptureTokenFromUrl()
+
     const token = this.readToken()
-    const onLogin = window.location.pathname === this.constructor.LOGIN_PATH
+    const onAuthPage = this.constructor.AUTH_PATHS.includes(window.location.pathname)
 
     if (!token) {
-      if (!onLogin) this.redirect(this.constructor.LOGIN_PATH)
+      if (!onAuthPage) this.redirect(this.constructor.LOGIN_PATH)
       return
     }
 
     const cached = this.readCachedUser()
     if (cached) {
       this.exposeUser(cached)
-      if (onLogin) {
+      if (onAuthPage) {
         this.redirect(this.constructor.HOME_PATH)
         return
       }
@@ -51,7 +61,7 @@ export default class extends Controller {
     }
     this.exposeUser(user)
     this.cacheUser(user)
-    if (onLogin) this.redirect(this.constructor.HOME_PATH)
+    if (onAuthPage) this.redirect(this.constructor.HOME_PATH)
   }
 
   async fetchCurrentUser(token) {
@@ -113,5 +123,22 @@ export default class extends Controller {
 
   redirect(path) {
     if (window.location.pathname !== path) window.location.href = path
+  }
+
+  // Captura ?token=… deixado pelo OmniauthCallbacksController após login
+  // bem-sucedido com Google. Salva em localStorage, invalida cache de user
+  // (force re-fetch via /me na sequência), e limpa o param da URL.
+  maybeCaptureTokenFromUrl() {
+    const params = new URLSearchParams(window.location.search)
+    const incoming = params.get("token")
+    if (!incoming) return
+
+    localStorage.setItem(this.constructor.TOKEN_KEY, incoming)
+    localStorage.removeItem(this.constructor.USER_KEY)
+
+    params.delete("token")
+    const cleanQuery = params.toString()
+    const newUrl = window.location.pathname + (cleanQuery ? `?${cleanQuery}` : "") + window.location.hash
+    window.history.replaceState({}, "", newUrl)
   }
 }

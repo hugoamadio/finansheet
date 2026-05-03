@@ -150,3 +150,52 @@ body {
   border-radius: 6px;
   font-size: 0.875rem;
 }
+
+/* OAuth Google — botão branco com borda + logo colorido. Compatível com
+   `button_to` (gera <form> com <button> dentro). */
+.login-card form[action="/auth/google_oauth2"] { margin: 0; }
+
+.login-card .btn-google {
+  width: 100%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.65rem;
+  padding: 0.7rem 1rem;
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: #1f2937;
+  background: #ffffff;
+  border: 1px solid #cbd5e1;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: background-color 120ms, border-color 120ms, box-shadow 120ms;
+}
+
+.login-card .btn-google:hover {
+  background: #f8fafc;
+  border-color: #94a3b8;
+  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.08);
+}
+
+.login-card .btn-google svg { flex-shrink: 0; }
+
+/* Divisor "ou" entre OAuth e form tradicional. */
+.login-card .auth-divider {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin: 1.25rem 0;
+  font-size: 0.78rem;
+  color: #94a3b8;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.login-card .auth-divider::before,
+.login-card .auth-divider::after {
+  content: "";
+  flex: 1;
+  height: 1px;
+  background: #e2e8f0;
+}

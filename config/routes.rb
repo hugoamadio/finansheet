@@ -7,10 +7,20 @@ Rails.application.routes.draw do
   # get "service-worker" => "rails/pwa#service_worker", as: :pwa_service_worker
 
   # Auth
-  get   "login" => "logins#new",   as: :login
-  post  "auth"  => "auth#create",  as: :auth
-  get   "me"    => "auth#show",    as: :me
-  patch "me"    => "auth#update"
+  get   "login"  => "logins#new",     as: :login
+  post  "auth"   => "auth#create",    as: :auth
+  get   "signup" => "signups#new",    as: :new_signup
+  post  "signup" => "signups#create", as: :signup
+  get   "me"     => "auth#show",      as: :me
+  patch "me"     => "auth#update"
+
+  # OmniAuth — Google OAuth2.
+  # GET /auth/:provider/callback é o endpoint pra onde o Google redireciona
+  # após o usuário autorizar. Não conflita com POST /auth (login) — método
+  # e path são diferentes. A request inicial /auth/google_oauth2 é montada
+  # pelo middleware OmniAuth, não precisa de rota explícita.
+  get "/auth/:provider/callback" => "omniauth_callbacks#callback", as: :omniauth_callback
+  get "/auth/failure"            => "omniauth_callbacks#failure",  as: :omniauth_failure
 
   # API JSON (chamada via fetch após render)
   scope :api, defaults: { format: :json } do

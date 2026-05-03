@@ -1,5 +1,9 @@
 class User < ApplicationRecord
-  has_secure_password
+  # `validations: false` desliga a validação automática de presença/length de
+  # password. Isso é necessário porque users criados via Google OAuth não têm
+  # senha (campo `password_digest` fica nil). A presença/length passa a ser
+  # validada por nós abaixo, condicionalmente.
+  has_secure_password validations: false
 
   normalizes :email, with: ->(email) { email.to_s.strip.downcase }
 
@@ -7,6 +11,12 @@ class User < ApplicationRecord
             presence: true,
             uniqueness: true,
             format: { with: URI::MailTo::EMAIL_REGEXP }
+
+  # Senha tem mínimo de 8 caracteres SEMPRE que vier preenchida (signup
+  # tradicional ou troca de senha futura). E é obrigatória na criação só
+  # quando o user não tem provider OAuth (signup tradicional).
+  validates :password, length: { minimum: 8 }, if: -> { password.present? }
+  validates :password, presence: true, on: :create, unless: -> { provider.present? }
 
   validates :salary_day,
             numericality: { in: 1..31, only_integer: true },
@@ -19,6 +29,29 @@ class User < ApplicationRecord
   has_many :fixed_expenses, dependent: :destroy
   has_many :card_purchases, dependent: :restrict_with_exception
   has_many :incomes,        dependent: :destroy
+
+  # Resolve um User a partir do hash que o OmniAuth devolve no callback do
+  # provider (ex: Google). Estratégia em 3 tentativas, em ordem:
+  #   1. Match por (provider, uid) — login subsequente do mesmo Google.
+  #   2. Match por email — usuário já tem conta com email/senha; LINKA o
+  #      provider/uid no User existente (UX: clicar "Entrar com Google" com
+  #      um email já cadastrado leva pra mesma conta).
+  #   3. Cria um User novo com email + provider + uid (sem senha — permitido
+  #      pelo `has_secure_password validations: false`).
+  def self.from_omniauth(auth)
+    user = find_by(provider: auth.provider, uid: auth.uid)
+    return user if user
+
+    email = auth.info&.email.to_s.strip.downcase
+    return nil if email.blank?
+
+    if (existing = find_by(email: email))
+      existing.update!(provider: auth.provider, uid: auth.uid)
+      return existing
+    end
+
+    create!(email: email, provider: auth.provider, uid: auth.uid)
+  end
 
   def salary_configured?
     salary_day.present? || salary_on_last_day?
