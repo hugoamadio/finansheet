@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_05_01_060000) do
+ActiveRecord::Schema[8.1].define(version: 2026_05_03_000000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pgcrypto"
@@ -131,6 +131,8 @@ ActiveRecord::Schema[8.1].define(version: 2026_05_01_060000) do
     t.string "provider"
     t.integer "salary_day"
     t.boolean "salary_on_last_day", default: false, null: false
+    t.datetime "tour_completed_at"
+    t.datetime "tour_skipped_at"
     t.string "uid"
     t.datetime "updated_at", null: false
     t.index ["email"], name: "index_users_on_email", unique: true

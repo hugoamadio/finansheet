@@ -24,6 +24,20 @@ class AuthController < ApiController
     end
   end
 
+  # PATCH /me/tour { status: "completed" | "skipped" }
+  # Estado do tour de onboarding fica em colunas dedicadas pra ser
+  # cross-device: completou em qualquer device, fica completo.
+  def update_tour
+    column = case params[:status]
+             when "completed" then :tour_completed_at
+             when "skipped"   then :tour_skipped_at
+             end
+    return render json: { success: false, errors: ["status inválido"] }, status: :unprocessable_entity unless column
+
+    current_user.update!(column => Time.current)
+    render json: { success: true, user: serialize(current_user) }, status: :ok
+  end
+
   private
 
   def serialize(user)
@@ -32,6 +46,8 @@ class AuthController < ApiController
       email:              user.email,
       salary_day:         user.salary_day,
       salary_on_last_day: user.salary_on_last_day,
+      tour_completed_at:  user.tour_completed_at,
+      tour_skipped_at:    user.tour_skipped_at,
     }
   end
 

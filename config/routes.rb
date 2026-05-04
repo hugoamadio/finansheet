@@ -11,8 +11,9 @@ Rails.application.routes.draw do
   post  "auth"   => "auth#create",    as: :auth
   get   "signup" => "signups#new",    as: :new_signup
   post  "signup" => "signups#create", as: :signup
-  get   "me"     => "auth#show",      as: :me
-  patch "me"     => "auth#update"
+  get   "me"      => "auth#show",        as: :me
+  patch "me"      => "auth#update"
+  patch "me/tour" => "auth#update_tour", as: :update_tour
 
   # OmniAuth — Google OAuth2.
   # GET /auth/:provider/callback é o endpoint pra onde o Google redireciona

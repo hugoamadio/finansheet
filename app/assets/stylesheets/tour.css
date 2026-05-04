@@ -1,0 +1,257 @@
+/*
+ * Tour de onboarding — estilos do overlay SVG e do popover.
+ *
+ * Sem dependência de Driver.js (vanilla). O JS posiciona o popover
+ * via top/left inline; aqui controlamos só visual.
+ *
+ * Quando o popover está dentro de <dialog open>, ele compartilha o
+ * top layer nativo do dialog — nenhum z-index do app consegue ficar
+ * acima. Quando está fora, usamos z-index alto.
+ */
+
+/* ── Highlight do alvo dentro de <dialog> ──────────────────────────
+ * Quando o step roda dentro de um modal, o ::backdrop nativo cobre o
+ * overlay SVG (que vive no body) — então não dá pra usar cutout. Em
+ * vez disso, marcamos o próprio alvo com uma classe e pintamos box-shadow
+ * em volta. box-shadow respeita border-radius do alvo (input/button)
+ * e não interfere no layout. */
+.tour-target--highlight {
+  box-shadow:
+    0 0 0 3px var(--brand),
+    0 0 0 8px rgba(37, 99, 235, 0.35) !important;
+  border-radius: inherit;
+  transition: box-shadow 200ms ease-out;
+  position: relative;
+  z-index: 1;
+}
+
+/* ── Overlay SVG (escurece tudo, com cutout no alvo) ───────────── */
+
+.tour-overlay {
+  position: fixed;
+  inset: 0;
+  width: 100vw;
+  height: 100vh;
+  z-index: 9998;
+  pointer-events: none; /* usuário interage com a app livremente */
+  animation: tour-fade-in 180ms ease-out;
+}
+
+.tour-overlay__fill {
+  fill: rgba(15, 23, 42, 0.55);
+}
+
+@keyframes tour-fade-in {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+/* ── Popover ───────────────────────────────────────────────────── */
+
+.tour-popover {
+  /* Sempre position: fixed — coords são viewport-relativas. Quando o
+     popover é descendente de <dialog open>, ele ainda participa do top
+     layer (regra do spec), mas mantemos coords em viewport pra evitar o
+     bug do Chrome em que filhos absolute fora dos bounds visíveis do
+     dialog não pintam. */
+  position: fixed;
+  z-index: 9999;
+  width: min(340px, calc(100vw - 24px));
+  background: #ffffff;
+  color: #0f172a;
+  border-radius: 12px;
+  padding: 1.1rem 1.25rem 1rem;
+  box-shadow:
+    0 20px 50px -10px rgba(15, 23, 42, 0.30),
+    0 8px 16px -4px rgba(15, 23, 42, 0.12);
+  font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  animation: tour-pop-in 200ms cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+@keyframes tour-pop-in {
+  from { opacity: 0; transform: translateY(-4px) scale(0.98); }
+  to   { opacity: 1; transform: translateY(0)    scale(1); }
+}
+
+.tour-popover__progress {
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: #94a3b8;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  margin-bottom: 0.5rem;
+}
+
+.tour-popover__title {
+  font-size: 1.02rem;
+  font-weight: 700;
+  color: #0f172a;
+  letter-spacing: -0.01em;
+  margin: 0 0 0.45rem;
+  line-height: 1.3;
+}
+
+.tour-popover__body {
+  font-size: 0.92rem;
+  line-height: 1.5;
+  color: #334155;
+  margin: 0 0 1rem;
+}
+
+.tour-popover__body strong { color: #0f172a; font-weight: 600; }
+.tour-popover__body em     { color: #1e293b; font-style: normal; font-weight: 500; }
+
+.tour-popover__footer {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-top: 0.25rem;
+}
+
+.tour-popover__skip {
+  background: transparent;
+  border: none;
+  padding: 0.4rem 0;
+  font-size: 0.82rem;
+  color: #64748b;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  cursor: pointer;
+  font-family: inherit;
+}
+.tour-popover__skip:hover { color: #334155; }
+
+.tour-popover__nav {
+  display: flex;
+  gap: 0.5rem;
+  margin-left: auto;
+}
+
+.tour-popover__prev,
+.tour-popover__next {
+  font-family: inherit;
+  font-size: 0.85rem;
+  font-weight: 600;
+  padding: 0.5rem 0.95rem;
+  border-radius: 6px;
+  cursor: pointer;
+  border: none;
+  transition: background-color 120ms, border-color 120ms;
+}
+
+.tour-popover__prev {
+  background: transparent;
+  color: #475569;
+  border: 1px solid #cbd5e1;
+}
+.tour-popover__prev:hover {
+  background: #f1f5f9;
+  color: #0f172a;
+}
+
+.tour-popover__next {
+  background: var(--brand);
+  color: #ffffff;
+}
+.tour-popover__next:hover { background: #1d4ed8; }
+.tour-popover__prev[hidden],
+.tour-popover__next[hidden] { display: none; }
+
+/* ── Arrow apontando pro alvo ──────────────────────────────────── */
+
+.tour-popover__arrow {
+  position: absolute;
+  width: 12px;
+  height: 12px;
+  background: #ffffff;
+  transform: rotate(45deg);
+  pointer-events: none;
+}
+
+/* Arrow position (left/top) é controlado pelo JS — calcula offset
+   relativo ao centro do target, com clamp pra não escapar do popover.
+   Aqui só definimos as bordas que ficam coladas no popover. */
+.tour-popover__arrow[data-placement="bottom"] {
+  top: -6px;
+  box-shadow: -2px -2px 4px -2px rgba(15, 23, 42, 0.06);
+}
+
+.tour-popover__arrow[data-placement="top"] {
+  bottom: -6px;
+  box-shadow: 2px 2px 4px -2px rgba(15, 23, 42, 0.06);
+}
+
+.tour-popover__arrow[data-placement="right"] {
+  left: -6px;
+  box-shadow: -2px 2px 4px -2px rgba(15, 23, 42, 0.06);
+}
+
+.tour-popover__arrow[data-placement="left"] {
+  right: -6px;
+  box-shadow: 2px -2px 4px -2px rgba(15, 23, 42, 0.06);
+}
+
+/* ── Bottom sheet mode (mobile + target em dialog) ─────────────────
+ * Em viewports apertados, qualquer placement clássico (top/bottom/left/right)
+ * acaba sobrepondo o dialog. Solução: o popover vira um "bottom sheet"
+ * fixado no rodapé da viewport, full width, com cantos arredondados
+ * só no topo. Sem arrow (não aponta pra alvo específico). */
+body.tour-bottom-sheet .tour-popover[data-bottom-sheet="1"] {
+  position: fixed !important;
+  bottom: 0 !important;
+  top: auto !important;
+  left: 0 !important;
+  right: 0 !important;
+  width: 100vw !important;
+  max-width: 100vw !important;
+  max-height: 45vh;
+  border-radius: 16px 16px 0 0;
+  padding: 1.1rem 1.1rem 1.25rem;
+  box-shadow:
+    0 -8px 24px -8px rgba(15, 23, 42, 0.20),
+    0 -2px 8px -2px rgba(15, 23, 42, 0.10);
+  animation: tour-sheet-in 220ms cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+body.tour-bottom-sheet .tour-popover[data-bottom-sheet="1"] .tour-popover__arrow {
+  display: none;
+}
+
+/* Quando bottom sheet está ativo, o dialog precisa de padding-bottom
+   extra pra que scroll interno mostre os botões finais acima do popover. */
+body.tour-bottom-sheet dialog[open] .modal__body {
+  padding-bottom: 240px !important;
+}
+
+@keyframes tour-sheet-in {
+  from { transform: translateY(100%); }
+  to   { transform: translateY(0); }
+}
+
+/* ── Mobile ───────────────────────────────────────────────────── */
+
+@media (max-width: 600px) {
+  .tour-popover {
+    padding: 1rem 1rem 0.85rem;
+    width: calc(100vw - 20px);
+    /* Limita altura em mobile e permite scroll interno se body for grande */
+    max-height: 60vh;
+    overflow-y: auto;
+  }
+  .tour-popover__title    { font-size: 0.95rem; }
+  .tour-popover__body     { font-size: 0.88rem; }
+  .tour-popover__progress { font-size: 0.7rem; }
+
+  /* Touch targets ≥ 40px de altura — Apple/Google guidelines */
+  .tour-popover__prev,
+  .tour-popover__next  {
+    padding: 0.65rem 1rem;
+    font-size: 0.88rem;
+    min-height: 40px;
+  }
+  .tour-popover__skip {
+    padding: 0.65rem 0;
+    font-size: 0.88rem;
+    min-height: 40px;
+  }
+}

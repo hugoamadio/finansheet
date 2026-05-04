@@ -9,6 +9,7 @@
 @import "cards.css";
 @import "popover.css";
 @import "fixed_expenses.css";
+@import "tour.css";
 
 :root {
   --sidebar-width: 290px;

@@ -310,6 +310,9 @@ export default class extends Controller {
 
       this.closeForm()
       await this.loadCards()
+      // Sinaliza criação (não edição) pra outros componentes reagirem —
+      // ex: tour de onboarding avança após o primeiro cartão criado.
+      if (!id) window.dispatchEvent(new CustomEvent("card:created"))
     } catch (err) {
       console.error("[cards] submit failed", err)
       alert("Erro ao salvar o cartão.")
@@ -546,6 +549,13 @@ export default class extends Controller {
       } else {
         this.showNotice({ text: `Lançamento criado.`, autoHideMs: 3500 })
       }
+
+      // Tour de onboarding (e qualquer outro consumidor) reage à criação
+      // de compra. Diferente de purchase:changed, esse evento só dispara
+      // em criação — não em edição/remoção.
+      window.dispatchEvent(new CustomEvent("purchase:created", {
+        detail: { cardId, purchaseId: data.purchase?.id },
+      }))
     } catch (err) {
       console.error("[cards] purchase failed", err)
       alert("Erro ao lançar a compra.")

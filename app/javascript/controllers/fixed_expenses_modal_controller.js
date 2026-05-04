@@ -228,6 +228,8 @@ export default class extends Controller {
       }
       this.closeForm()
       await this.fetchList()
+      // Sinaliza criação (não edição) — tour de onboarding ouve.
+      if (!id) window.dispatchEvent(new CustomEvent("fixed-expense:created"))
     } catch (err) {
       console.error("[fixed-expenses-modal] submit failed", err)
       alert("Erro ao salvar.")

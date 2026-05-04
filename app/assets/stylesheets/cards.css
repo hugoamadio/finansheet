@@ -45,6 +45,15 @@
      duplicação de espaço no mobile. */
   .cards-page__header { margin-bottom: 0.75rem; }
   .month-nav         { margin-bottom: 0; }
+
+  /* Em mobile o label do mês quebraria por falta de espaço com 2 botões
+     nav + Virar Ciclo na mesma linha. Layout vira 2 linhas: label em
+     cima full-width, controles embaixo (prev/next à esquerda, Virar Ciclo
+     à direita). Specificity .month-nav .month-nav__center vence o
+     `flex: 1` do bloco principal (que vem depois no arquivo). */
+  .month-nav                          { flex-wrap: wrap; row-gap: 0.5rem; }
+  .month-nav .month-nav__center       { flex: 0 0 100%; order: -1; }
+  .month-nav .action-btn--success     { margin-left: auto; }
 }
 
 .cards-page__title {
