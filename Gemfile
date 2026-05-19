@@ -21,7 +21,7 @@ gem "jbuilder"
 gem "bcrypt", "~> 3.1.7"
 
 # JWT encode/decode for stateless auth tokens [https://github.com/jwt/ruby-jwt]
-gem "jwt", "~> 2.9"
+gem "jwt", "~> 3.2"
 
 # OAuth via OmniAuth — login com Google. O `_csrf_protection` força POST no
 # /auth/:provider (mitiga ataque CSRF de redirect).
