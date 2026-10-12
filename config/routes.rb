@@ -36,6 +36,7 @@ Rails.application.routes.draw do
     get   "cycles"              => "cycles#index"
     patch "cycles/current"      => "cycles#update_current"
     post  "cycles/current/turn" => "cycles#turn"
+    post  "cycles/last/undo"    => "cycles#undo"
 
     resources :fixed_expenses, only: [:index, :create, :update, :destroy]
     resources :fixed_expense_payments, only: [:update]

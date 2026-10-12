@@ -54,6 +54,20 @@ class CyclesControllerTest < ActionDispatch::IntegrationTest
     assert_equal 2500.0, closed["balance"]
   end
 
+  test "POST undo explains why when not allowed, and reopens the last cycle when allowed" do
+    post "/api/cycles/last/undo", headers: @auth, as: :json
+    assert_response :unprocessable_entity
+    assert_equal ["não há virada para desfazer"], JSON.parse(response.body)["errors"]
+
+    Cycles::TurnService.new(user: @user, cycle_id: @user.open_cycle.id).call
+    get "/api/cycles", headers: @auth, as: :json
+    assert JSON.parse(response.body)["can_undo"]
+
+    post "/api/cycles/last/undo", headers: @auth, as: :json
+    assert_response :ok
+    assert_equal 1, JSON.parse(response.body)["cycle"]["number"]
+  end
+
   private
 
   def buy(total)

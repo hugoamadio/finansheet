@@ -5,8 +5,9 @@ class CyclesController < ApiController
     FixedExpenses::EnsurePaymentsForCycle.new(user: current_user, cycle_number: open.number).call
 
     render json: {
-      open:   serialize_open(open),
-      closed: current_user.cycles.closed.order(number: :desc).map { |c| serialize_closed(c) },
+      open:     serialize_open(open),
+      closed:   current_user.cycles.closed.order(number: :desc).map { |c| serialize_closed(c) },
+      can_undo: Cycles::UndoTurnService.new(user: current_user).blocker.nil?,
     }
   end
 
@@ -27,6 +28,14 @@ class CyclesController < ApiController
     render json: { cycle: serialize_open(new_cycle) }, status: :created
   rescue Cycles::TurnService::AlreadyTurned
     render json: { errors: ["esse ciclo já foi virado"] }, status: :conflict
+  end
+
+  # POST /api/cycles/last/undo
+  def undo
+    cycle = Cycles::UndoTurnService.new(user: current_user).call
+    render json: { cycle: serialize_open(cycle) }
+  rescue Cycles::UndoTurnService::NotAllowed => e
+    render json: { errors: [e.message] }, status: :unprocessable_entity
   end
 
   private
