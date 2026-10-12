@@ -40,14 +40,15 @@ class FixedExpensesController < ApiController
   end
 
   # PATCH /api/fixed_expenses/:id
-  # Se `amount` mudou, propaga pros payments ainda não fechados — fechados
-  # ficam intactos (reajuste vale daqui pra frente).
+  # Se `amount` mudou, propaga pros payments ainda não fechados que seguiam o
+  # valor antigo — fechados e ajustes pontuais do ciclo (ex.: zerado) ficam
+  # como estão.
   def update
-    new_amount = fixed_expense_params[:amount]
+    old_amount = @fixed_expense.amount
 
     if @fixed_expense.update(fixed_expense_params)
-      if new_amount.present?
-        @fixed_expense.payments.where(cycle_id: nil).update_all(amount: @fixed_expense.amount)
+      if @fixed_expense.amount != old_amount
+        @fixed_expense.payments.where(cycle_id: nil, amount: old_amount).update_all(amount: @fixed_expense.amount)
       end
       render json: { fixed_expense: serialize_expense(@fixed_expense) }
     else
@@ -113,6 +114,7 @@ class FixedExpensesController < ApiController
       name:               expense.name,
       due_day:            expense.due_day,
       amount:             payment.amount.to_f,
+      expense_amount:     expense.amount.to_f,
       paid_at:            payment.paid_at,
       cycle_closed:       payment.cycle_id.present?,
       installment_number: FixedExpenses::EnsurePaymentsForCycle.installment_number_for(expense, number),

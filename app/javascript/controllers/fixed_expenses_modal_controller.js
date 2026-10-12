@@ -146,7 +146,8 @@ export default class extends Controller {
     this.formTitleTarget.textContent = "Editar conta fixa"
     this.formIdTarget.value      = item.expense_id
     this.fieldNameTarget.value   = item.name
-    this.fieldAmountTarget.value = item.amount
+    // Valor da conta (não o ajuste pontual deste ciclo, que pode ser 0).
+    this.fieldAmountTarget.value = item.expense_amount ?? item.amount
     this.fieldDueDayTarget.value = item.due_day ?? ""
 
     // Edição não permite mexer em parcelamento — esconde o bloco e mostra

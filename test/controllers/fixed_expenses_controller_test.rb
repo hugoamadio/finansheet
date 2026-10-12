@@ -49,4 +49,28 @@ class FixedExpensesControllerTest < ActionDispatch::IntegrationTest
     assert_response :ok
     assert_equal 0.to_d, payment.reload.amount
   end
+
+  test "GET index exposes the base amount next to this cycle's amount" do
+    fe = @user.fixed_expenses.create!(name: "Faxineira", amount: 150)
+    fe.payments.create!(amount: 0, cycle_number: @open.number)
+
+    get "/api/fixed_expenses", headers: @auth, as: :json
+
+    item = JSON.parse(response.body)["items"].first
+    assert_equal 0.0, item["amount"]
+    assert_equal 150.0, item["expense_amount"]
+  end
+
+  test "PATCH expense keeps one-off amounts and updates the others" do
+    fe = @user.fixed_expenses.create!(name: "Faxineira", amount: 150)
+    adjusted = fe.payments.create!(amount: 0, cycle_number: @open.number)
+    regular  = fe.payments.create!(amount: 150, cycle_number: @open.number + 1)
+
+    patch "/api/fixed_expenses/#{fe.id}", params: { fixed_expense: { name: "Diarista", amount: 180 } },
+                                          headers: @auth, as: :json
+
+    assert_response :ok
+    assert_equal 0.to_d,   adjusted.reload.amount
+    assert_equal 180.to_d, regular.reload.amount
+  end
 end
