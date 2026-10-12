@@ -1,0 +1,61 @@
+<% content_for :title, "FinanSheet — Virada" %>
+
+<section class="turn-page" data-controller="turn">
+  <header class="cards-page__header">
+    <h1 class="cards-page__title">Virada do ciclo</h1>
+    <a href="/dashboard" class="action-btn action-btn--primary">Voltar aos cartões</a>
+  </header>
+  <p class="turn-page__period" data-turn-target="period">Carregando…</p>
+
+  <div class="turn-page__banner turn-page__banner--done" data-turn-target="done" hidden>
+    <span>Ciclo virado. O próximo já está aberto e limpo.</span>
+    <a href="/dashboard" class="btn btn--primary">Ir para os cartões</a>
+  </div>
+
+  <div class="turn-page__banner" data-turn-target="undoBox" hidden>
+    <span>Virou por engano ou cedo demais? O ciclo novo ainda está intocado.</span>
+    <button type="button" class="btn btn--ghost" data-action="turn#undo">Desfazer a última virada</button>
+  </div>
+
+  <ol class="turn-steps">
+    <li class="turn-step">
+      <h2 class="turn-step__title">1. Renda</h2>
+      <form class="turn-step__income" data-action="submit->turn#saveIncome">
+        <label class="form-field">
+          A receber neste ciclo (R$)
+          <input type="number" step="0.01" min="0" required data-turn-target="income">
+        </label>
+        <button type="submit" class="btn btn--primary" data-turn-target="incomeSubmit">Salvar</button>
+      </form>
+    </li>
+
+    <li class="turn-step">
+      <h2 class="turn-step__title">2. Cartões <small>confira com o app do banco</small></h2>
+      <ul class="turn-list" data-turn-target="cards"></ul>
+    </li>
+
+    <li class="turn-step">
+      <h2 class="turn-step__title">
+        3. Contas fixas
+        <button type="button" class="turn-step__shortcut" data-action="turn#payAll">Marcar todas</button>
+      </h2>
+      <ul class="turn-list" data-turn-target="fixed"></ul>
+    </li>
+
+    <li class="turn-step" data-turn-target="debtsStep" hidden>
+      <h2 class="turn-step__title">4. Devoluções pendentes</h2>
+      <ul class="turn-list" data-turn-target="debts"></ul>
+    </li>
+
+    <li class="turn-step">
+      <h2 class="turn-step__title">Resumo</h2>
+      <dl class="turn-summary" data-turn-target="summary"></dl>
+    </li>
+  </ol>
+
+  <div class="turn-page__actions">
+    <button type="button" class="action-btn action-btn--success" data-action="turn#turn" data-turn-target="turnButton">
+      Virar ciclo
+    </button>
+  </div>
+</section>

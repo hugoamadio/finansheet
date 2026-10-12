@@ -184,3 +184,7 @@ button.card-item__more {
 .cycles-table a { color: var(--brand); font-weight: 600; text-decoration: none; }
 .cycles-table td.is-negative { color: #b91c1c; }
 .cycles-table td.cycles-table__empty { text-align: left; color: #64748b; font-style: italic; }
+
+/* Links com cara de botão não sublinham. */
+a.action-btn,
+a.btn { text-decoration: none; }

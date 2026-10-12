@@ -54,6 +54,7 @@ Rails.application.routes.draw do
 
   # App
   get "dashboard" => "home#index", as: :dashboard
+  get "dashboard/virada" => "home#turn", as: :turn
 
   # Landing comercial pública — fica em / pra ser a primeira impressão
   # quando alguém chega no domínio sem estar logado.
