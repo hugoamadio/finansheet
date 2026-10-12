@@ -45,6 +45,9 @@ Rails.application.routes.draw do
     put    "cycles/current/cards/:card_id/check" => "cycle_card_checks#create"
     delete "cycles/current/cards/:card_id/check" => "cycle_card_checks#destroy"
 
+    get  "debts"           => "debts#index"
+    post "debts/reimburse" => "debts#reimburse"
+
     resources :fixed_expenses, only: [:index, :create, :update, :destroy]
     resources :fixed_expense_payments, only: [:update]
   end
