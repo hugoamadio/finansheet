@@ -41,7 +41,7 @@
       </header>
       <ul class="sidebar-cycle__lines" data-cycle-summary-target="lines"></ul>
       <footer class="sidebar-cycle__footer">
-        <span>Saldo</span>
+        <span>Sobra</span>
         <strong class="sidebar-cycle__balance" data-cycle-summary-target="balance">R$ 0,00</strong>
       </footer>
     </section>
@@ -82,6 +82,16 @@
         </svg>
         Ver detalhes
       </button>
+    </section>
+
+    <%# "Me devem" — compras de outras pessoas nos seus cartões. Só aparece
+        quando alguém deve algo. %>
+    <section class="sidebar-fixed sidebar-debts" data-controller="debts"
+             data-debts-target="root" hidden>
+      <header class="sidebar-fixed__header">
+        <h2 class="sidebar-fixed__title">Me devem</h2>
+      </header>
+      <ul class="sidebar-debts__list" data-debts-target="list"></ul>
     </section>
 
     <div class="sidebar-footer">

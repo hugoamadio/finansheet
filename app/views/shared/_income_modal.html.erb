@@ -1,8 +1,4 @@
-<%#
-  Modal de definir/editar o "A receber" do mês.
-  - Componente independente: o income_controller ouve "income:edit-request"
-    pra abrir, faz upsert via PUT /api/incomes e dispatcha "income:changed".
-%>
+<%# Modal de definir/editar o "A receber" do ciclo aberto (PATCH /api/cycles/current). %>
 <dialog class="modal"
         data-controller="income"
         data-income-target="dialog">
@@ -18,8 +14,8 @@
         data-action="submit->income#submit">
 
     <p style="margin: 0 0 1rem; color: #475569; font-size: 0.9rem;">
-      Quanto você espera receber neste ciclo? O valor é independente por mês —
-      vira o ciclo, começa de novo.
+      Quanto você espera receber para pagar este ciclo? Ao virar, o valor é copiado
+      para o ciclo novo.
     </p>
 
     <label class="form-field">

@@ -15,7 +15,7 @@
 
   <div class="modal__body">
     <div class="fixed-expenses__closed-banner" data-fixed-expenses-modal-target="closedBanner" hidden>
-      Esse mês está fechado. Edições só na definição da conta — afetam apenas meses abertos.
+      Este não é o ciclo aberto (fechado ou prévia): só leitura.
     </div>
 
     <div class="fixed-expenses__toolbar">
@@ -60,7 +60,7 @@
                  data-action="change->fixed-expenses-modal#toggleParceled">
           Compra parcelada
           <span class="form-field__hint" data-controller="popover"
-                data-popover-text-value="Marque se essa conta tem fim — ex: sofá em 10×. A conta some automaticamente quando a última parcela passa. Se já pagou parte das parcelas, informe quantas e o mês da próxima a vencer.">ⓘ</span>
+                data-popover-text-value="Marque se essa conta tem fim — ex: sofá em 10×. Ela some sozinha depois da última parcela. Se já pagou parte, informe quantas: a próxima cai neste ciclo.">ⓘ</span>
         </label>
 
         <div data-fixed-expenses-modal-target="parceledFields" hidden>
@@ -76,10 +76,6 @@
                      data-fixed-expenses-modal-target="fieldInstallmentsPaid">
             </label>
           </div>
-          <label class="form-field">
-            Mês da próxima parcela a vencer
-            <input type="month" data-fixed-expenses-modal-target="fieldNextDueMonth">
-          </label>
         </div>
       </div>
 

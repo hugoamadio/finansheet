@@ -2,13 +2,13 @@ import { Controller } from "@hotwired/stimulus"
 
 // Modal dedicado de Contas Fixas. Responsável por TODAS as requests
 // relacionadas a CRUD + status:
-//   GET    /api/fixed_expenses?month=...
+//   GET    /api/fixed_expenses?cycle=N
 //   POST   /api/fixed_expenses
 //   PATCH  /api/fixed_expenses/:id
 //   DELETE /api/fixed_expenses/:id
 //   PATCH  /api/fixed_expense_payments/:id  (paid toggle / amount pontual)
 //
-// Abre por evento "fixed-expenses:open-request" com { month } no detail.
+// Abre por evento "fixed-expenses:open-request" com { cycleNumber, label } no detail.
 // Após qualquer mutação dispatcha "fixed-expenses:changed" com totais
 // atualizados — sidebar consome sem precisar refetchar.
 export default class extends Controller {
@@ -16,17 +16,17 @@ export default class extends Controller {
     "dialog", "monthLabel", "list", "empty", "total", "paid",
     "form", "formTitle", "formId", "fieldName", "fieldAmount", "fieldDueDay",
     "parceledBlock", "fieldParceled", "parceledFields",
-    "fieldInstallmentsCount", "fieldInstallmentsPaid", "fieldNextDueMonth",
+    "fieldInstallmentsCount", "fieldInstallmentsPaid",
     "editNotice",
     "formCancel", "formSubmit", "addButton", "closedBanner",
   ]
 
   connect() {
-    this.month = null
+    this.cycleNumber = null
     this.items = []
-    this.cycleClosed = false
+    this.readOnly = false
 
-    this.onOpen = (event) => this.open(event.detail?.month)
+    this.onOpen = (event) => this.open(event.detail ?? {})
     window.addEventListener("fixed-expenses:open-request", this.onOpen)
   }
 
@@ -36,10 +36,10 @@ export default class extends Controller {
 
   // ---- Abertura/Fechamento ----
 
-  async open(month) {
-    if (!month) return
-    this.month = month
-    this.monthLabelTarget.textContent = formatMonthLabel(month)
+  async open({ cycleNumber, label }) {
+    if (!cycleNumber) return
+    this.cycleNumber = cycleNumber
+    this.monthLabelTarget.textContent = label ?? ""
     this.resetForm()
     this.formTarget.hidden = true
     this.dialogTarget.showModal()
@@ -54,11 +54,11 @@ export default class extends Controller {
 
   async fetchList() {
     try {
-      const resp = await this.authFetch(`/api/fixed_expenses?month=${this.month}`)
+      const resp = await this.authFetch(`/api/fixed_expenses?cycle=${this.cycleNumber}`)
       if (!resp.ok) throw new Error(`GET fixed_expenses falhou: ${resp.status}`)
       const data = await resp.json()
       this.items = data.items ?? []
-      this.cycleClosed = !!data.cycle_closed
+      this.readOnly = !data.editable
       this.renderList(data)
       this.emitChanged({
         total: data.total,
@@ -72,8 +72,8 @@ export default class extends Controller {
   }
 
   renderList(data) {
-    this.closedBannerTarget.hidden = !this.cycleClosed
-    this.addButtonTarget.disabled  = this.cycleClosed
+    this.closedBannerTarget.hidden = !this.readOnly
+    this.addButtonTarget.disabled  = this.readOnly
 
     this.listTarget.innerHTML = ""
     if (this.items.length === 0) {
@@ -112,13 +112,13 @@ export default class extends Controller {
       <div class="fixed-expenses__item-amount">${formatBRL(item.amount)}</div>
       <div class="fixed-expenses__item-actions">
         <button type="button" class="fixed-expenses__btn-paid" data-action="click->fixed-expenses-modal#togglePaid"
-                ${item.cycle_closed ? "disabled" : ""}>${escapeHtml(paidTxt)}</button>
+                ${this.readOnly ? "disabled" : ""}>${escapeHtml(paidTxt)}</button>
         <button type="button" class="fixed-expenses__btn-edit"   data-action="click->fixed-expenses-modal#openEdit"
                 title="Editar" aria-label="Editar"
-                ${item.cycle_closed ? "disabled" : ""}>✏️</button>
+                ${this.readOnly ? "disabled" : ""}>✏️</button>
         <button type="button" class="fixed-expenses__btn-remove" data-action="click->fixed-expenses-modal#remove"
                 title="Remover" aria-label="Remover"
-                ${item.cycle_closed ? "disabled" : ""}>🗑️</button>
+                ${this.readOnly ? "disabled" : ""}>🗑️</button>
       </div>
     `
     return li
@@ -127,7 +127,7 @@ export default class extends Controller {
   // ---- Form (criar/editar) ----
 
   openCreate() {
-    if (this.cycleClosed) return
+    if (this.readOnly) return
     this.resetForm()
     this.formTitleTarget.textContent = "Nova conta fixa"
     // Bloco de parcelamento disponível só no create.
@@ -167,12 +167,7 @@ export default class extends Controller {
   }
 
   toggleParceled() {
-    const on = this.fieldParceledTarget.checked
-    this.parceledFieldsTarget.hidden = !on
-    if (on && !this.fieldNextDueMonthTarget.value) {
-      const d = new Date()
-      this.fieldNextDueMonthTarget.value = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`
-    }
+    this.parceledFieldsTarget.hidden = !this.fieldParceledTarget.checked
   }
 
   closeForm() {
@@ -194,7 +189,6 @@ export default class extends Controller {
     if (!id && this.fieldParceledTarget.checked) {
       const total = parseInt(this.fieldInstallmentsCountTarget.value, 10)
       const paid  = parseInt(this.fieldInstallmentsPaidTarget.value, 10) || 0
-      const ndm   = this.fieldNextDueMonthTarget.value
       if (!Number.isFinite(total) || total < 2) {
         alert("Total de parcelas precisa ser ao menos 2.")
         return
@@ -203,13 +197,8 @@ export default class extends Controller {
         alert(`Já paguei deve estar entre 0 e ${total - 1}.`)
         return
       }
-      if (!ndm) {
-        alert("Informe o mês da próxima parcela a vencer.")
-        return
-      }
       payload.installments_count = total
       payload.installments_paid  = paid
-      payload.next_due_month     = ndm + "-01"
     }
 
     this.setSubmitting(true)
@@ -219,7 +208,7 @@ export default class extends Controller {
       const resp = await this.authFetch(url, {
         method,
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ fixed_expense: payload, month: this.month }),
+        body: JSON.stringify({ fixed_expense: payload }),
       })
       if (!resp.ok) {
         const data = await resp.json().catch(() => ({}))
@@ -316,7 +305,7 @@ export default class extends Controller {
   emitChanged({ total, paidTotal, pendingTotal }) {
     window.dispatchEvent(new CustomEvent("fixed-expenses:changed", {
       detail: {
-        month:        this.month,
+        cycleNumber:  this.cycleNumber,
         total:        total,
         paidTotal:    paidTotal,
         pendingTotal: pendingTotal,
@@ -345,12 +334,6 @@ function formatDate(value) {
   if (!value) return ""
   const d = new Date(value)
   return d.toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit" })
-}
-
-function formatMonthLabel(ymd) {
-  const [y, m] = String(ymd).split("-").map((v) => parseInt(v, 10))
-  if (!Number.isFinite(y) || !Number.isFinite(m)) return ""
-  return new Date(y, m - 1, 1).toLocaleDateString("pt-BR", { month: "long", year: "numeric" })
 }
 
 function escapeHtml(str) {

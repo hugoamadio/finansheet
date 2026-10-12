@@ -1,10 +1,9 @@
 import { Controller } from "@hotwired/stimulus"
 
-// Modal de definir/editar o "A receber" do mês. Componente independente:
-// - Ouve "income:edit-request" (detail: { month: "YYYY-MM-DD", amount: number|null })
-// - Possui SEU endpoint (PUT /api/incomes — upsert por reference_month)
-// - Em sucesso, dispatcha "income:changed" pro cards_controller atualizar
-//   a barra de resumo do mês
+// Modal de definir/editar o "A receber" do ciclo aberto. Componente independente:
+// - Ouve "income:edit-request" (detail: { amount })
+// - Salva via PATCH /api/cycles/current { expected_income }
+// - Em sucesso, dispatcha "income:changed" ({ amount }) pro cards_controller
 export default class extends Controller {
   static targets = ["dialog", "form", "title", "amountInput", "submit", "error"]
   static TOKEN_KEY = "auth_token"
@@ -19,15 +18,8 @@ export default class extends Controller {
   }
 
   openWith(detail) {
-    if (!detail.month) return
-
-    this.month = detail.month
-
-    this.titleTarget.textContent = detail.amount == null
-      ? "Definir A receber"
-      : "Editar A receber"
-
-    this.amountInputTarget.value = detail.amount == null ? "" : String(detail.amount)
+    this.titleTarget.textContent = detail.amount ? "Editar A receber" : "Definir A receber"
+    this.amountInputTarget.value = detail.amount ? String(detail.amount) : ""
 
     this.hideError()
     this.dialogTarget.showModal()
@@ -51,10 +43,10 @@ export default class extends Controller {
 
     this.setSubmitting(true)
     try {
-      const resp = await this.authFetch(`/api/incomes`, {
-        method: "PUT",
+      const resp = await this.authFetch(`/api/cycles/current`, {
+        method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ income: { reference_month: this.month, amount } }),
+        body: JSON.stringify({ expected_income: amount }),
       })
 
       const data = await resp.json().catch(() => ({}))
@@ -66,7 +58,7 @@ export default class extends Controller {
 
       this.dialogTarget.close()
       window.dispatchEvent(new CustomEvent("income:changed", {
-        detail: { month: this.month, amount: data.amount },
+        detail: { amount: data.cycle?.expected_income ?? amount },
       }))
     } catch (err) {
       console.error("[income] submit failed", err)
