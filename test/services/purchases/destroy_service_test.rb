@@ -16,7 +16,7 @@ module Purchases
     end
 
     test "raises DestroyingClosedPurchase when an installment is closed" do
-      cycle = @user.cycles.create!(reference_month: Date.new(2026, 4, 1), closed_at: Time.current)
+      cycle = @user.cycles.create!(number: 99, started_at: 1.month.ago, closed_at: Time.current)
       @purchase.installments.first.update_columns(cycle_id: cycle.id)
 
       assert_raises Purchases::DestroyService::DestroyingClosedPurchase do

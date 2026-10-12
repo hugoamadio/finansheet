@@ -23,7 +23,7 @@ class CardPurchasesControllerTest < ActionDispatch::IntegrationTest
   end
 
   test "PATCH 422 when purchase has a closed installment" do
-    cycle = @user.cycles.create!(reference_month: Date.new(2026, 4, 1), closed_at: Time.current)
+    cycle = @user.cycles.create!(number: 99, started_at: 1.month.ago, closed_at: Time.current)
     @purchase.installments.first.update_columns(cycle_id: cycle.id)
 
     patch "/api/cards/#{@card.id}/purchases/#{@purchase.id}",
@@ -43,7 +43,7 @@ class CardPurchasesControllerTest < ActionDispatch::IntegrationTest
   end
 
   test "DELETE 422 when purchase has a closed installment" do
-    cycle = @user.cycles.create!(reference_month: Date.new(2026, 4, 1), closed_at: Time.current)
+    cycle = @user.cycles.create!(number: 99, started_at: 1.month.ago, closed_at: Time.current)
     @purchase.installments.first.update_columns(cycle_id: cycle.id)
 
     delete "/api/cards/#{@card.id}/purchases/#{@purchase.id}", headers: @auth, as: :json

@@ -41,7 +41,7 @@ module Purchases
     test "advances to next open cycle when original due_month is in a closed cycle (orphan)" do
       # Parcela órfã: due_month em mês com ciclo fechado, mas cycle_id=NULL
       # (compra criada/editada DEPOIS do close — bind_installments! não pegou).
-      @user.cycles.create!(reference_month: Date.new(2026, 4, 1), closed_at: Time.current)
+      @user.cycles.create!(number: 99, started_at: 1.month.ago, closed_at: Time.current)
       @purchase.installments.where(number: 1).update_all(due_month: Date.new(2026, 4, 1))
 
       Purchases::UpdateService.new(
@@ -69,7 +69,7 @@ module Purchases
     end
 
     test "raises EditingClosedPurchase when any installment has a cycle" do
-      cycle = @user.cycles.create!(reference_month: Date.new(2026, 4, 1), closed_at: Time.current)
+      cycle = @user.cycles.create!(number: 99, started_at: 1.month.ago, closed_at: Time.current)
       @purchase.installments.first.update_columns(cycle_id: cycle.id)
 
       assert_raises Purchases::UpdateService::EditingClosedPurchase do

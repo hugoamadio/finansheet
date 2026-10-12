@@ -32,7 +32,6 @@ Rails.application.routes.draw do
       resources :installments, only: [:index],                     controller: "card_installments"
     end
 
-    post "cycles/close" => "cycles#close"
 
     get "incomes" => "incomes#show"
     put "incomes" => "incomes#upsert"

@@ -57,6 +57,14 @@ class User < ApplicationRecord
     salary_day.present? || salary_on_last_day?
   end
 
+  # Ciclo aberto do usuário. Conta nova (sem ciclo) ganha o ciclo seguinte
+  # ao último número usado — o 1 na primeira vez.
+  def open_cycle
+    cycles.open.first || cycles.create!(number: (cycles.maximum(:number) || 0) + 1, started_at: Time.current)
+  rescue ActiveRecord::RecordNotUnique
+    cycles.open.first!
+  end
+
   # Primeiro mês com ciclo ainda aberto a partir de `from` (default: mês corrente).
   # Usado pra: ciclo ativo no boot da home, due_month de novas compras, e
   # rebuild de installments em edições — todos compartilham a regra "pula

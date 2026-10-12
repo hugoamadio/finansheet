@@ -11,6 +11,14 @@ class CardPurchase < ApplicationRecord
             numericality: { greater_than_or_equal_to: 0, only_integer: true }
   validate  :installments_paid_must_be_less_than_count
 
+  normalizes :third_party_name, with: ->(name) { name.squish.presence }
+
+  # Compra feita por outra pessoa no cartão do usuário: soma na fatura,
+  # mas não no saldo dele.
+  def third_party?
+    third_party_name.present?
+  end
+
   def editable?
     installments.where.not(cycle_id: nil).none?
   end
