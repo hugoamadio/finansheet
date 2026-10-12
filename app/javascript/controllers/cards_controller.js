@@ -1,13 +1,16 @@
 import { Controller } from "@hotwired/stimulus"
 
-// Página inicial: grid de cartões + CRUD via modal.
+// Página inicial: grid de cartões do ciclo visualizado + CRUD via modal.
 // Padrão do projeto: lista vem de fetch após render.
 //
 // Loading em duas etapas:
-//   1) GET /api/cards            — metadata (id/name/banco/days) + flags do mês
-//   2) GET /api/cards/:id/installments?month=...  — por cartão, popula items+totais
+//   1) GET /api/cards?cycle=N                  — cabeçalho do ciclo + cartões
+//   2) GET /api/cards/:id/installments?cycle=N — por cartão, itens + totais
 //
-// Estado do mês visualizado fica na URL (?month=YYYY-MM) pra sobreviver F5.
+// O ciclo visualizado fica na URL (?cycle=N) pra sobreviver F5. Sem o
+// parâmetro, o backend devolve o ciclo aberto e a gente adota.
+const ITEMS_PREVIEW = 10
+
 export default class extends Controller {
   static targets = [
     "grid", "loading", "cardTemplate",
@@ -17,36 +20,28 @@ export default class extends Controller {
     "purchaseCardHeader", "purchaseCardName", "purchaseCardBank", "purchaseCardMeta",
     "purchaseFieldDescription", "purchaseFieldTotal", "purchaseFieldInstallments",
     "purchaseFieldHasPaid", "purchaseFieldPaidWrapper", "purchaseFieldPaidCount",
-    "purchaseFieldDateWrapper", "purchaseFieldDate",
-    "purchaseFieldNextDueWrapper", "purchaseFieldNextDue",
+    "purchaseFieldDate", "purchaseFieldThirdParty", "thirdPartyNames",
     "purchasePreview",
-    "monthLabel", "prevButton", "closedTag", "closeCycleButton", "closeCycleIcon", "closeCycleLabel",
-    "closeCycleModal", "closeCycleMonth", "closeCycleSummary", "closeCycleConfirm",
-    "notice", "noticeText", "noticeAction",
+    "cycleLabel", "prevButton", "nextButton", "statusTag", "turnButton", "turnLabel",
+    "notice", "noticeText",
   ]
 
   connect() {
     this.cards = []
     this.installmentsByCard = {}
-    // Sem URL param o backend resolve o ciclo ativo (1º aberto ≥ hoje) e
-    // devolve em data.month — adotamos isso como currentMonth no boot.
-    this.currentMonth = readMonthFromURL()
-    this.monthClosedAt = null
-    this.hasEarlierData = false
-    this.expectedIncome = null
+    this.expanded = new Set()
+    this.cycleNumber = readCycleFromURL()
+    this.cycle = null
 
-    // Os modais de editar/remover compra e o de income moram em controllers
-    // próprios. Aqui só ouvimos os eventos que eles disparam pra recarregar
-    // o que muda — purchase mexe nos totais do card; income atualiza o resumo.
+    // Os modais de editar/remover compra, o menu da compra e o de income
+    // moram em controllers próprios. Aqui só ouvimos o que eles avisam.
     this.onPurchaseChanged = (event) => {
       const cardId = event.detail?.cardId
       if (cardId) this.loadInstallments(cardId)
     }
     this.onIncomeChanged = (event) => {
-      // Atualiza o resumo só quando o evento é do mês visualizado.
-      const eventMonth = event.detail?.month
-      if (!eventMonth || eventMonth !== formatYMD(this.currentMonth)) return
-      this.expectedIncome = event.detail.amount
+      if (!this.isOpen) return
+      this.cycle.expected_income = Number(event.detail?.amount ?? 0)
       this.emitSummaryUpdate()
     }
     window.addEventListener("purchase:changed", this.onPurchaseChanged)
@@ -60,34 +55,31 @@ export default class extends Controller {
     window.removeEventListener("income:changed",   this.onIncomeChanged)
   }
 
-  // ---- API: cards (metadata + globals do mês) ----
+  get isOpen() {
+    return this.cycle?.status === "open"
+  }
+
+  // ---- API: cartões + cabeçalho do ciclo ----
 
   async loadCards({ withFade = false } = {}) {
     if (withFade) this.gridTarget.classList.add("cards-grid--fading")
     else this.showLoading()
 
     try {
-      const url = this.currentMonth
-        ? `/api/cards?month=${formatYMD(this.currentMonth)}`
-        : `/api/cards`
+      const url = this.cycleNumber ? `/api/cards?cycle=${this.cycleNumber}` : `/api/cards`
       const resp = await this.authFetch(url)
       if (!resp.ok) throw new Error(`GET /api/cards falhou: ${resp.status}`)
       const data = await resp.json()
-      // Boot sem URL param: adota o ciclo ativo que o backend resolveu e
-      // sincroniza com a URL pra sobreviver F5.
-      if (!this.currentMonth) {
-        this.currentMonth = parseYMD(data.month) ?? firstDayOfCurrentMonth()
-        writeMonthToURL(this.currentMonth)
-      }
+      // O backend corrige número ausente/fora do intervalo; adotamos o dele.
+      this.cycle = data.cycle
+      this.cycleNumber = data.cycle.number
+      writeCycleToURL(this.cycleNumber)
       this.cards = data.cards ?? []
-      this.hasEarlierData = !!data.has_earlier_data
-      this.monthClosedAt  = data.month_closed_at
-      this.expectedIncome = data.expected_income ?? null
       this.installmentsByCard = {}
+      this.expanded.clear()
       this.render()
-      this.renderMonthNav()
+      this.renderCycleNav()
       this.emitSummaryUpdate()
-      // dispara fetch das installments de cada cartão (em paralelo, sem esperar)
       this.cards.forEach((c) => this.loadInstallments(c.id))
     } catch (err) {
       console.error("[cards] load failed", err)
@@ -97,184 +89,205 @@ export default class extends Controller {
     }
   }
 
-  // ---- API: installments por cartão (endpoint dedicado) ----
+  // ---- API: parcelas por cartão ----
 
   async loadInstallments(cardId) {
     const cardEl = this.findCardEl(cardId)
     if (!cardEl) return
 
     cardEl.classList.add("card-item--loading-items")
-
     try {
-      const monthParam = formatYMD(this.currentMonth)
-      const resp = await this.authFetch(`/api/cards/${cardId}/installments?month=${monthParam}`)
+      const resp = await this.authFetch(`/api/cards/${cardId}/installments?cycle=${this.cycleNumber}`)
       if (!resp.ok) throw new Error(`GET installments falhou: ${resp.status}`)
       const data = await resp.json()
       this.installmentsByCard[cardId] = data
       this.applyInstallments(cardEl, data)
     } catch (err) {
       console.error(`[cards] installments load failed for ${cardId}`, err)
-      const itemsEl = cardEl.querySelector("[data-items]")
-      itemsEl.innerHTML = `<li style="opacity:0.7;font-style:italic;">Erro carregando lançamentos</li>`
+      cardEl.querySelector("[data-items]").innerHTML = `<li style="opacity:0.7;font-style:italic;">Erro carregando lançamentos</li>`
     } finally {
       cardEl.classList.remove("card-item--loading-items")
     }
   }
 
   applyInstallments(cardEl, data) {
+    const cardId  = cardEl.dataset.cardId
+    const all     = data.installments ?? []
+    const showAll = this.expanded.has(cardId)
+    const visible = showAll ? all : all.slice(0, ITEMS_PREVIEW)
+
     const itemsEl = cardEl.querySelector("[data-items]")
     itemsEl.innerHTML = ""
-
-    const cardId = cardEl.dataset.cardId
-    const monthClosed = !!this.monthClosedAt
-
-    for (const inst of data.month_installments ?? []) {
-      const fraction = inst.installments_count === 1
-        ? "x1"
-        : `${inst.number}/${inst.installments_count}`
-
-      const li = document.createElement("li")
-      if (inst.excluded_from_summary) li.classList.add("card-item__items-row--excluded")
-      li.appendChild(buildItemLabel(inst.description, fraction))
-      li.appendChild(buildItemAmount(inst.amount))
-      li.appendChild(buildItemActions({ inst, cardId, monthClosed, controller: this }))
-      itemsEl.appendChild(li)
-    }
+    for (const inst of visible) itemsEl.appendChild(this.buildItemRow(inst, cardId))
 
     const moreEl = cardEl.querySelector("[data-more]")
-    if (data.month_installments_overflow) {
-      moreEl.textContent = `+${data.month_installments_overflow} parcela(s)`
+    if (all.length > ITEMS_PREVIEW) {
+      moreEl.textContent = showAll ? "Ver menos" : `Ver todas (+${all.length - ITEMS_PREVIEW})`
       moreEl.hidden = false
     } else {
       moreEl.hidden = true
     }
 
-    cardEl.querySelector("[data-month-total]").textContent = formatBRL(data.month_total ?? 0)
-    cardEl.querySelector("[data-total-open]").textContent  = formatBRL(data.total_open  ?? 0)
+    cardEl.querySelector("[data-cycle-total]").textContent  = formatBRL(data.cycle_total ?? 0)
+    cardEl.querySelector("[data-future-total]").textContent = formatBRL(data.future_total ?? 0)
 
-    // Saldo do mês depende do total de cada card; reemite o resumo a cada chegada.
+    // A sobra depende do total de cada cartão; reemite a cada chegada.
     this.emitSummaryUpdate()
   }
 
-  // ---- Navegação de mês (URL state) ----
+  toggleMore(event) {
+    const cardEl = event.currentTarget.closest(".card-item")
+    const id = cardEl.dataset.cardId
+    if (this.expanded.has(id)) this.expanded.delete(id)
+    else this.expanded.add(id)
 
-  prevMonth() {
+    const data = this.installmentsByCard[id]
+    if (data) this.applyInstallments(cardEl, data)
+  }
+
+  buildItemRow(inst, cardId) {
+    const li = document.createElement("li")
+    if (inst.third_party_name) li.classList.add("card-item__items-row--third-party")
+
+    const fraction = inst.installments_count === 1 ? "x1" : `${inst.number}/${inst.installments_count}`
+    const tags = []
+    if (inst.third_party_name) tags.push(`<span class="item-tag item-tag--person">${escapeHtml(inst.third_party_name)}</span>`)
+    if (inst.prepaid)          tags.push(`<span class="item-tag">quitada</span>`)
+    if (inst.cancelled)        tags.push(`<span class="item-tag">cancelada</span>`)
+
+    const label = document.createElement("span")
+    label.className = "card-item__item-label"
+    label.innerHTML = `${escapeHtml(inst.description)}<span class="card-item__item-installment">${fraction}</span>${tags.join("")}`
+    li.appendChild(label)
+
+    const amount = document.createElement("span")
+    amount.className = "card-item__item-amount"
+    amount.textContent = formatBRL(inst.amount)
+    li.appendChild(amount)
+
+    // Um botão "⋯" por compra; quem monta o menu é o purchase_menu_controller.
+    const menuBtn = document.createElement("button")
+    menuBtn.type = "button"
+    menuBtn.className = "card-item__item-action"
+    menuBtn.title = "Ações da compra"
+    menuBtn.setAttribute("aria-label", "Ações da compra")
+    menuBtn.innerHTML = `<svg viewBox="0 0 24 24" aria-hidden="true">${DOTS_PATH}</svg>`
+    menuBtn.addEventListener("click", () => {
+      window.dispatchEvent(new CustomEvent("purchase:menu-request", {
+        detail: { cardId, cycleStatus: this.cycle?.status, inst, anchor: menuBtn },
+      }))
+    })
+
+    const actions = document.createElement("span")
+    actions.className = "card-item__item-actions"
+    actions.appendChild(menuBtn)
+    li.appendChild(actions)
+
+    return li
+  }
+
+  // ---- Navegação entre ciclos (URL state) ----
+
+  prevCycle() {
     if (!this.canGoBack()) return
-    this.currentMonth = addMonths(this.currentMonth, -1)
-    writeMonthToURL(this.currentMonth)
+    this.cycleNumber -= 1
     this.loadCards({ withFade: true })
   }
 
-  // Pode voltar enquanto: estiver à frente do mês corrente do calendário,
-  // OU houver dados em meses anteriores ao visualizado.
+  nextCycle() {
+    if (!this.canGoForward()) return
+    this.cycleNumber += 1
+    this.loadCards({ withFade: true })
+  }
+
   canGoBack() {
-    return this.currentMonth > firstDayOfCurrentMonth() || this.hasEarlierData
+    return !!this.cycle && this.cycle.number > (this.cycle.first_number ?? this.cycle.number)
   }
 
-  nextMonth() {
-    this.currentMonth = addMonths(this.currentMonth, 1)
-    writeMonthToURL(this.currentMonth)
+  canGoForward() {
+    return !!this.cycle && this.cycle.number < this.cycle.max_number
+  }
+
+  renderCycleNav() {
+    this.cycleLabelTarget.textContent = cycleTitle(this.cycle)
+    this.prevButtonTarget.disabled = !this.canGoBack()
+    this.nextButtonTarget.disabled = !this.canGoForward()
+
+    const tag = { closed: "Fechado", upcoming: "Prévia" }[this.cycle.status]
+    this.statusTagTarget.textContent = tag ?? ""
+    this.statusTagTarget.hidden = !tag
+
+    this.turnLabelTarget.textContent = this.isOpen ? "Virar ciclo" : "Voltar ao ciclo aberto"
+  }
+
+  // No ciclo aberto, vai para a tela de virada; nos outros, volta ao aberto.
+  turnOrBack() {
+    if (this.isOpen) {
+      window.location.href = "/dashboard/virada"
+      return
+    }
+    this.cycleNumber = this.cycle.open_number
     this.loadCards({ withFade: true })
+  }
+
+  // ---- Conferido ✓ ----
+
+  async toggleCheck(event) {
+    const btn = event.currentTarget
+    const cardEl = btn.closest(".card-item")
+    const card = this.cards.find((c) => c.id === cardEl.dataset.cardId)
+    if (!card || !this.isOpen || btn.disabled) return
+
+    btn.disabled = true
+    try {
+      const resp = await this.authFetch(`/api/cycles/current/cards/${card.id}/check`, {
+        method: card.checked ? "DELETE" : "PUT",
+      })
+      if (!resp.ok) throw new Error(`check falhou: ${resp.status}`)
+      card.checked = !card.checked
+    } catch (err) {
+      console.error("[cards] check failed", err)
+      alert("Erro ao marcar o cartão.")
+    } finally {
+      this.applyCheck(cardEl, card)
+    }
+  }
+
+  applyCheck(cardEl, card) {
+    const btn = cardEl.querySelector("[data-check]")
+    btn.hidden = !this.isOpen && !card.checked
+    btn.disabled = !this.isOpen
+    btn.classList.toggle("card-item__check--on", !!card.checked)
+    btn.textContent = card.checked ? "Conferido ✓" : "Marcar conferido"
   }
 
   // ---- Resumo do ciclo (sidebar) ----
 
-  // Empacota o estado do mês visualizado e emite "cycle:summary-update" pro
-  // cycle_summary_controller (que vive na sidebar) renderizar. Disparado em:
-  // - chegada de /api/cards (mês trocou ou boot)
-  // - chegada de /api/cards/:id/installments (totais por card chegaram)
-  // - "income:changed" (usuário definiu/editou A receber)
+  // Emite "cycle:summary-update" pro cycle_summary_controller (sidebar) e
+  // pro fixed_expenses_summary_controller. "Seus cartões" usa só as compras
+  // do usuário; as de outras pessoas vão numa linha informativa.
   emitSummaryUpdate() {
-    if (!this.currentMonth) return
+    if (!this.cycle) return
 
     const cardLines = this.cards
-      .map((c) => {
-        const data = this.installmentsByCard[c.id]
-        // fallback pra month_total durante deploy onde o backend ainda não
-        // devolve o campo novo.
-        const total = Number(data?.month_total_for_summary ?? data?.month_total ?? 0)
-        return { name: c.name, total }
-      })
+      .map((c) => ({ name: c.name, total: Number(this.installmentsByCard[c.id]?.cycle_total_own ?? 0) }))
       .filter((l) => l.total > 0)
+
+    const thirdPartyTotal = this.cards.reduce((sum, c) => {
+      const data = this.installmentsByCard[c.id]
+      return sum + Number(data?.cycle_total ?? 0) - Number(data?.cycle_total_own ?? 0)
+    }, 0)
 
     window.dispatchEvent(new CustomEvent("cycle:summary-update", {
       detail: {
-        month:          formatYMD(this.currentMonth),
-        monthLabel:     formatCycleLabel(this.currentMonth),
-        expectedIncome: this.expectedIncome,
-        monthClosed:    !!this.monthClosedAt,
+        cycleNumber:    this.cycle.number,
+        status:         this.cycle.status,
+        label:          cycleTitle(this.cycle),
+        expectedIncome: this.cycle.expected_income,
         cardLines,
+        thirdPartyTotal,
       },
     }))
-  }
-
-  renderMonthNav() {
-    this.monthLabelTarget.textContent = formatCycleLabel(this.currentMonth)
-    this.prevButtonTarget.disabled = !this.canGoBack()
-
-    const closed = !!this.monthClosedAt
-    this.closedTagTarget.hidden = !closed
-    this.closeCycleButtonTarget.disabled = closed
-    this.closeCycleLabelTarget.textContent = closed ? "Ciclo fechado" : "Virar Ciclo"
-    this.closeCycleIconTarget.innerHTML = closed
-      ? CLOSE_CYCLE_LOCKED_SVG
-      : CLOSE_CYCLE_ACTIVE_SVG
-  }
-
-  // ---- Modal "Virar Ciclo" ----
-
-  openCloseCycle() {
-    if (this.monthClosedAt) return
-
-    this.closeCycleMonthTarget.textContent = formatMonthLabel(this.currentMonth)
-
-    const summaryTotalFor = (cardId) => {
-      const data = this.installmentsByCard[cardId]
-      return Number(data?.month_total_for_summary ?? data?.month_total ?? 0)
-    }
-
-    const lines = this.cards
-      .map((c) => ({ name: c.name, total: summaryTotalFor(c.id) }))
-      .filter((row) => row.total > 0)
-      .map((row) => `<div style="display:flex;justify-content:space-between"><span>${escapeHtml(row.name || "—")}</span><strong>${formatBRL(row.total)}</strong></div>`)
-
-    const grandTotal = this.cards.reduce((sum, c) => sum + summaryTotalFor(c.id), 0)
-    const summary = lines.length === 0
-      ? `<div style="opacity:0.7">Nenhum lançamento de cartão nesse mês.</div>`
-      : lines.join("") + `<hr style="margin:0.5rem 0;border:none;border-top:1px solid #cbd5e1"><div style="display:flex;justify-content:space-between"><span>Total</span><strong>${formatBRL(grandTotal)}</strong></div>`
-
-    this.closeCycleSummaryTarget.innerHTML = summary
-    this.closeCycleModalTarget.showModal()
-  }
-
-  closeCloseCycleModal() {
-    this.closeCycleModalTarget.close()
-  }
-
-  async confirmCloseCycle() {
-    this.closeCycleConfirmTarget.disabled = true
-    this.closeCycleConfirmTarget.innerHTML = `<span class="spinner"></span> Fechando…`
-
-    try {
-      const resp = await this.authFetch(`/api/cycles/close`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ month: formatYMD(this.currentMonth) }),
-      })
-      if (!resp.ok) {
-        const data = await resp.json().catch(() => ({}))
-        alert((data.errors || ["Erro ao virar o ciclo"]).join(", "))
-        return
-      }
-      this.closeCloseCycleModal()
-      await this.loadCards({ withFade: true })
-    } catch (err) {
-      console.error("[cards] close cycle failed", err)
-      alert("Erro ao virar o ciclo.")
-    } finally {
-      this.closeCycleConfirmTarget.disabled = false
-      this.closeCycleConfirmTarget.textContent = "Confirmar"
-    }
   }
 
   // ---- CRUD do cartão (modal create/edit) ----
@@ -294,24 +307,21 @@ export default class extends Controller {
     this.setSubmitting(true)
     try {
       const url = id ? `/api/cards/${id}` : `/api/cards`
-      const method = id ? "PATCH" : "POST"
       const resp = await this.authFetch(url, {
-        method,
+        method: id ? "PATCH" : "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ card: payload }),
       })
 
       if (!resp.ok) {
         const data = await resp.json().catch(() => ({}))
-        const errs = (data.errors || ["Erro ao salvar"]).join(", ")
-        alert(errs)
+        alert((data.errors || ["Erro ao salvar"]).join(", "))
         return
       }
 
       this.closeForm()
       await this.loadCards()
-      // Sinaliza criação (não edição) pra outros componentes reagirem —
-      // ex: tour de onboarding avança após o primeiro cartão criado.
+      // Sinaliza criação (não edição) — o tour de onboarding avança.
       if (!id) window.dispatchEvent(new CustomEvent("card:created"))
     } catch (err) {
       console.error("[cards] submit failed", err)
@@ -323,13 +333,12 @@ export default class extends Controller {
 
   async remove(event) {
     const cardEl = event.currentTarget.closest(".card-item")
-    const id = cardEl.dataset.cardId
-    const card = this.cards.find((c) => c.id === id)
+    const card = this.cards.find((c) => c.id === cardEl.dataset.cardId)
     if (!card) return
     if (!confirm(`Remover o cartão "${card.name}"?`)) return
 
     try {
-      const resp = await this.authFetch(`/api/cards/${id}`, { method: "DELETE" })
+      const resp = await this.authFetch(`/api/cards/${card.id}`, { method: "DELETE" })
       if (!resp.ok) {
         const data = await resp.json().catch(() => ({}))
         alert((data.errors || ["Erro ao remover"]).join(", "))
@@ -350,17 +359,16 @@ export default class extends Controller {
   }
 
   openEdit(event) {
-    const id = event.currentTarget.closest(".card-item").dataset.cardId
-    const card = this.cards.find((c) => c.id === id)
+    const card = this.cards.find((c) => c.id === event.currentTarget.closest(".card-item").dataset.cardId)
     if (!card) return
 
-    this.formIdTarget.value         = card.id
-    this.fieldNameTarget.value      = card.name ?? ""
-    this.fieldBankTarget.value      = card.bank ?? ""
-    this.fieldModeTarget.value      = card.mode ?? "credit"
-    this.fieldPayDayTarget.value    = card.pay_day ?? ""
-    this.fieldBestDayTarget.value   = card.best_day ?? ""
-    this.fieldColorTarget.value     = card.color ?? "#1d4ed8"
+    this.formIdTarget.value       = card.id
+    this.fieldNameTarget.value    = card.name ?? ""
+    this.fieldBankTarget.value    = card.bank ?? ""
+    this.fieldModeTarget.value    = card.mode ?? "credit"
+    this.fieldPayDayTarget.value  = card.pay_day ?? ""
+    this.fieldBestDayTarget.value = card.best_day ?? ""
+    this.fieldColorTarget.value   = card.color ?? "#1d4ed8"
 
     this.formTitleTarget.textContent = "Editar cartão"
     this.formModalTarget.showModal()
@@ -374,53 +382,52 @@ export default class extends Controller {
   // ---- Modal: lançar compra ----
 
   openPurchase(event) {
-    const id = event.currentTarget.closest(".card-item").dataset.cardId
-    const card = this.cards.find((c) => c.id === id)
+    if (!this.isOpen) return
+    const card = this.cards.find((c) => c.id === event.currentTarget.closest(".card-item").dataset.cardId)
     if (!card) return
-
-    if (!card.best_day) {
-      alert("Esse cartão precisa de um dia de fechamento (best_day) antes de receber compras. Edite o cartão primeiro.")
-      return
-    }
 
     this.purchaseFormTarget.reset()
     this.purchaseCardIdTarget.value = card.id
     this.purchaseCardNameTarget.textContent = card.name || "—"
     this.purchaseCardBankTarget.textContent = card.bank || ""
-    this.purchaseCardMetaTarget.textContent = `Fecha dia ${card.best_day} · vence dia ${card.pay_day ?? "—"}`
+    this.purchaseCardMetaTarget.textContent = cardMeta(card)
 
     this.purchaseCardHeaderTarget.classList.remove("modal-purchase__card--credit", "modal-purchase__card--debit")
     this.purchaseCardHeaderTarget.classList.add(card.mode === "debit" ? "modal-purchase__card--debit" : "modal-purchase__card--credit")
     this.purchaseCardHeaderTarget.style.background = card.color || ""
 
-    const today = new Date()
-    this.purchaseFieldDateTarget.value = today.toISOString().slice(0, 10)
-    this.purchaseFieldNextDueTarget.value = today.toISOString().slice(0, 7)
+    this.purchaseFieldDateTarget.value = todayISO()
     this.purchaseFieldInstallmentsTarget.value = "1"
     this.purchaseFieldHasPaidTarget.checked = false
     this.purchaseFieldPaidWrapperTarget.hidden = true
     this.purchaseFieldPaidCountTarget.value = ""
-    this.purchaseFieldDateWrapperTarget.hidden = false
-    this.purchaseFieldNextDueWrapperTarget.hidden = true
+    this.purchaseFieldThirdPartyTarget.value = ""
 
     this.updatePurchasePreview()
     this.purchaseModalTarget.showModal()
     this.purchaseFieldDescriptionTarget.focus()
+    this.loadKnownNames()
   }
 
-  // Marcar "já paguei N" troca o campo de data: em vez de pedir a data
-  // (potencialmente esquecida) da compra original, pedimos só o mês da
-  // próxima parcela a vencer — informação que o usuário sempre sabe.
+  // Sugestões de "de outra pessoa" (nomes já usados).
+  async loadKnownNames() {
+    try {
+      const resp = await this.authFetch("/api/debts")
+      if (!resp.ok) return
+      const data = await resp.json()
+      this.thirdPartyNamesTarget.innerHTML = (data.known_names ?? [])
+        .map((name) => `<option value="${escapeHtml(name)}"></option>`)
+        .join("")
+    } catch (err) {
+      console.error("[cards] known names failed", err)
+    }
+  }
+
   togglePurchasePaid() {
     const on = this.purchaseFieldHasPaidTarget.checked
     this.purchaseFieldPaidWrapperTarget.hidden = !on
-    this.purchaseFieldDateWrapperTarget.hidden = on
-    this.purchaseFieldNextDueWrapperTarget.hidden = !on
-    if (on) {
-      this.purchaseFieldPaidCountTarget.focus()
-    } else {
-      this.purchaseFieldPaidCountTarget.value = ""
-    }
+    if (on) this.purchaseFieldPaidCountTarget.focus()
+    else this.purchaseFieldPaidCountTarget.value = ""
     this.updatePurchasePreview()
   }
 
@@ -428,17 +435,15 @@ export default class extends Controller {
     this.purchaseModalTarget.close()
   }
 
+  // A próxima parcela em aberto sempre cai no ciclo aberto; as seguintes,
+  // um ciclo depois da outra.
   updatePurchasePreview() {
-    const total = parseFloat(this.purchaseFieldTotalTarget.value)
-    const count = parseInt(this.purchaseFieldInstallmentsTarget.value, 10)
-    const cardId = this.purchaseCardIdTarget.value
-    const card = this.cards.find((c) => c.id === cardId)
+    const total   = parseFloat(this.purchaseFieldTotalTarget.value)
+    const count   = parseInt(this.purchaseFieldInstallmentsTarget.value, 10)
     const hasPaid = this.purchaseFieldHasPaidTarget.checked
-    const paid = hasPaid
-      ? parseInt(this.purchaseFieldPaidCountTarget.value, 10)
-      : 0
+    const paid    = hasPaid ? parseInt(this.purchaseFieldPaidCountTarget.value, 10) : 0
 
-    if (!total || !count || count < 1 || !card?.best_day) {
+    if (!total || !count || count < 1) {
       this.purchasePreviewTarget.hidden = true
       return
     }
@@ -449,37 +454,19 @@ export default class extends Controller {
       return
     }
 
-    // firstDue = mês da parcela paid+1 (ou parcela 1 se paid=0).
-    // - hasPaid: usuário escolhe direto o mês da próxima parcela em aberto
-    // - sem hasPaid: deriva do mês da compra (ou hoje se vazio)
-    let firstDue
-    if (hasPaid) {
-      const monthStr = this.purchaseFieldNextDueTarget.value || todayYM()
-      const [y, m] = monthStr.split("-").map((v) => parseInt(v, 10))
-      firstDue = new Date(y, m - 1, 1)
-    } else {
-      const dateStr = this.purchaseFieldDateTarget.value
-      const purchaseDate = dateStr ? new Date(dateStr + "T00:00:00") : new Date()
-      firstDue = new Date(purchaseDate.getFullYear(), purchaseDate.getMonth(), 1)
-    }
+    const base      = Math.floor((total / count) * 100) / 100
+    const last      = Math.round((total - base * (count - 1)) * 100) / 100
+    const remaining = count - paid
 
-    const baseAmount = Math.floor((total / count) * 100) / 100
-    const lastAmount = Math.round((total - baseAmount * (count - 1)) * 100) / 100
-    const remaining  = count - paid
-    const lastDue    = new Date(firstDue.getFullYear(), firstDue.getMonth() + remaining - 1, 1)
+    let splitTxt
+    if (remaining === 1)    splitTxt = `1× ${formatBRL(last)}`
+    else if (base === last) splitTxt = `${remaining}× ${formatBRL(base)}`
+    else                    splitTxt = `${remaining - 1}× ${formatBRL(base)} + 1× ${formatBRL(last)}`
 
-    const fmtMonth = (d) => d.toLocaleDateString("pt-BR", { month: "short", year: "2-digit" })
-    const fmtMoney = (n) => n.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })
+    const startTxt = paid > 0 ? `começa na ${paid + 1}ª/${count} neste ciclo` : "primeira neste ciclo"
+    const endTxt   = remaining > 1 ? `, última daqui a ${remaining - 1} ciclo(s)` : ""
 
-    const splitTxt = baseAmount === lastAmount
-      ? `${remaining}× ${fmtMoney(baseAmount)}`
-      : `${remaining - 1}× ${fmtMoney(baseAmount)} + 1× ${fmtMoney(lastAmount)}`
-
-    const startTxt = paid > 0
-      ? `começa na ${paid + 1}ª/${count} em ${fmtMonth(firstDue)}`
-      : `primeira em ${fmtMonth(firstDue)}`
-
-    this.purchasePreviewTarget.innerHTML = `<strong>${splitTxt}</strong> — ${startTxt}, última em ${fmtMonth(lastDue)}`
+    this.purchasePreviewTarget.innerHTML = `<strong>${splitTxt}</strong> — ${startTxt}${endTxt}`
     this.purchasePreviewTarget.hidden = false
   }
 
@@ -489,12 +476,9 @@ export default class extends Controller {
     const cardId = this.purchaseCardIdTarget.value
     const installmentsCount = parseInt(this.purchaseFieldInstallmentsTarget.value, 10)
     const hasPaid = this.purchaseFieldHasPaidTarget.checked
-    const installmentsPaid  = hasPaid
-      ? parseInt(this.purchaseFieldPaidCountTarget.value, 10)
-      : 0
+    const installmentsPaid = hasPaid ? parseInt(this.purchaseFieldPaidCountTarget.value, 10) : 0
 
-    if (hasPaid &&
-        (!Number.isFinite(installmentsPaid) || installmentsPaid < 1 || installmentsPaid >= installmentsCount)) {
+    if (hasPaid && (!Number.isFinite(installmentsPaid) || installmentsPaid < 1 || installmentsPaid >= installmentsCount)) {
       alert(`Parcelas já pagas deve ser entre 1 e ${installmentsCount - 1}.`)
       return
     }
@@ -504,16 +488,8 @@ export default class extends Controller {
       total_amount:       parseFloat(this.purchaseFieldTotalTarget.value),
       installments_count: installmentsCount,
       installments_paid:  installmentsPaid,
-    }
-    // Envia só o campo de data relevante. Backend aceita ambos opcionais e
-    // faz fallback pra hoje quando nenhum vier.
-    if (hasPaid) {
-      // type=month vem como "YYYY-MM"; backend faz beginning_of_month.
-      if (this.purchaseFieldNextDueTarget.value) {
-        payload.next_due_month = this.purchaseFieldNextDueTarget.value + "-01"
-      }
-    } else if (this.purchaseFieldDateTarget.value) {
-      payload.purchased_on = this.purchaseFieldDateTarget.value
+      purchased_on:       this.purchaseFieldDateTarget.value || null,
+      third_party_name:   this.purchaseFieldThirdPartyTarget.value.trim() || null,
     }
 
     this.setPurchaseSubmitting(true)
@@ -524,35 +500,18 @@ export default class extends Controller {
         body: JSON.stringify({ purchase: payload }),
       })
 
+      const data = await resp.json().catch(() => ({}))
       if (!resp.ok) {
-        const data = await resp.json().catch(() => ({}))
         alert((data.errors || ["Erro ao lançar compra"]).join(", "))
         return
       }
 
       this.closePurchase()
-
-      // Refresca SÓ o card afetado, sem mexer no mês visualizado
-      // (preserva o contexto dos outros cards). Se a 1ª parcela caiu em outro
-      // mês, mostra notice com atalho pra navegar até lá.
-      const data = await resp.json().catch(() => ({}))
-      const firstDue = data.purchase?.installments?.[0]?.due_month
-      const targetMonth = firstDue ? parseYMD(firstDue) : null
-
       await this.loadInstallments(cardId)
+      this.showNotice({ text: "Lançamento criado.", autoHideMs: 3500 })
+      if (payload.third_party_name) window.dispatchEvent(new CustomEvent("debts:changed"))
 
-      if (targetMonth && !sameMonth(targetMonth, this.currentMonth)) {
-        this.showNotice({
-          text: `Lançamento criado · primeira parcela em ${formatMonthLabel(targetMonth)}.`,
-          action: { label: `Ver ${formatMonthLabel(targetMonth)}`, month: targetMonth },
-        })
-      } else {
-        this.showNotice({ text: `Lançamento criado.`, autoHideMs: 3500 })
-      }
-
-      // Tour de onboarding (e qualquer outro consumidor) reage à criação
-      // de compra. Diferente de purchase:changed, esse evento só dispara
-      // em criação — não em edição/remoção.
+      // Só em criação (não em edição/remoção) — o tour de onboarding ouve.
       window.dispatchEvent(new CustomEvent("purchase:created", {
         detail: { cardId, purchaseId: data.purchase?.id },
       }))
@@ -566,67 +525,21 @@ export default class extends Controller {
 
   setPurchaseSubmitting(flag) {
     this.purchaseSubmitTarget.disabled = flag
-    this.purchaseSubmitTarget.innerHTML = flag
-      ? `<span class="spinner"></span> Lançando…`
-      : `Lançar`
-  }
-
-  // Liga/desliga "não considerar no resumo do ciclo" pra uma compra inteira.
-  // O totalizador do cartão (mês/aberto) continua somando — só a sidebar e o
-  // resumo do "Virar Ciclo" deixam de contar. Permitido em qualquer estado
-  // (mês fechado / parcela em ciclo fechado) — flag puramente visual.
-  async toggleExcluded(cardId, purchaseId, currentValue) {
-    try {
-      const resp = await this.authFetch(`/api/cards/${cardId}/purchases/${purchaseId}/toggle_excluded`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ excluded_from_summary: !currentValue }),
-      })
-      if (!resp.ok) {
-        const data = await resp.json().catch(() => ({}))
-        alert((data.errors || ["Erro ao atualizar"]).join(", "))
-        return
-      }
-      await this.loadInstallments(cardId)
-    } catch (err) {
-      console.error("[cards] toggle_excluded failed", err)
-      alert("Erro ao atualizar a flag.")
-    }
+    this.purchaseSubmitTarget.innerHTML = flag ? `<span class="spinner"></span> Lançando…` : `Lançar`
   }
 
   // ---- Notice (toast inline) ----
 
-  showNotice({ text, action = null, autoHideMs = null }) {
+  showNotice({ text, autoHideMs = null }) {
     if (this.noticeHideTimer) clearTimeout(this.noticeHideTimer)
-
     this.noticeTextTarget.textContent = text
-    if (action) {
-      this.noticeActionTarget.textContent = action.label
-      this.noticeActionTarget.dataset.targetMonth = formatYMD(action.month)
-      this.noticeActionTarget.hidden = false
-    } else {
-      this.noticeActionTarget.hidden = true
-      delete this.noticeActionTarget.dataset.targetMonth
-    }
     this.noticeTarget.hidden = false
-
-    if (autoHideMs) {
-      this.noticeHideTimer = setTimeout(() => this.dismissNotice(), autoHideMs)
-    }
+    if (autoHideMs) this.noticeHideTimer = setTimeout(() => this.dismissNotice(), autoHideMs)
   }
 
   dismissNotice() {
     if (this.noticeHideTimer) clearTimeout(this.noticeHideTimer)
     this.noticeTarget.hidden = true
-  }
-
-  followNotice() {
-    const ymd = this.noticeActionTarget.dataset.targetMonth
-    if (!ymd) return
-    this.currentMonth = parseYMD(ymd)
-    writeMonthToURL(this.currentMonth)
-    this.dismissNotice()
-    this.loadCards({ withFade: true })
   }
 
   // ---- Render ----
@@ -644,9 +557,7 @@ export default class extends Controller {
       return
     }
 
-    for (const card of this.cards) {
-      this.gridTarget.appendChild(this.buildCardEl(card))
-    }
+    for (const card of this.cards) this.gridTarget.appendChild(this.buildCardEl(card))
   }
 
   buildCardEl(card) {
@@ -655,22 +566,24 @@ export default class extends Controller {
     node.classList.add(card.mode === "debit" ? "card-item--debit" : "card-item--credit")
     if (card.color) node.style.background = card.color
 
-    node.querySelector("[data-name]").textContent = card.name || "—"
-    node.querySelector("[data-bank]").textContent = card.bank || ""
-    node.querySelector("[data-mode]").textContent = card.mode === "debit" ? "Débito" : "Crédito"
+    node.querySelector("[data-name]").textContent     = card.name || "—"
+    node.querySelector("[data-bank]").textContent     = card.bank || ""
+    node.querySelector("[data-mode]").textContent     = card.mode === "debit" ? "Débito" : "Crédito"
     node.querySelector("[data-pay-day]").textContent  = card.pay_day  ?? "—"
     node.querySelector("[data-best-day]").textContent = card.best_day ?? "—"
 
-    // Items + totais ficam vazios — populados em loadInstallments(cardId)
+    // Itens e totais chegam em loadInstallments(cardId).
     node.querySelector("[data-items]").innerHTML = `<li style="opacity:0.5;font-style:italic;">Carregando…</li>`
-    node.querySelector("[data-month-total]").textContent = "—"
-    node.querySelector("[data-total-open]").textContent  = "—"
+    node.querySelector("[data-cycle-total]").textContent  = "—"
+    node.querySelector("[data-future-total]").textContent = "—"
+    this.applyCheck(node, card)
 
-    if (this.monthClosedAt) {
+    if (!this.isOpen) {
+      const text = this.cycle?.status === "closed" ? POPOVER_CLOSED_TEXT : POPOVER_UPCOMING_TEXT
       node.querySelectorAll(".card-item__actions button").forEach((btn) => {
         btn.disabled = true
         btn.dataset.controller = "popover"
-        btn.dataset.popoverTextValue = POPOVER_CLOSED_MONTH_TEXT
+        btn.dataset.popoverTextValue = text
       })
     }
 
@@ -701,9 +614,7 @@ export default class extends Controller {
 
   setSubmitting(flag) {
     this.formSubmitTarget.disabled = flag
-    this.formSubmitTarget.innerHTML = flag
-      ? `<span class="spinner"></span> Salvando…`
-      : `Salvar`
+    this.formSubmitTarget.innerHTML = flag ? `<span class="spinner"></span> Salvando…` : `Salvar`
   }
 
   authFetch(url, options = {}) {
@@ -716,6 +627,13 @@ export default class extends Controller {
     return fetch(url, { ...options, headers })
   }
 }
+
+const POPOVER_CLOSED_TEXT   = "Ciclo fechado — não é possível alterar lançamentos."
+const POPOVER_UPCOMING_TEXT = "Prévia de um ciclo futuro — lance compras no ciclo aberto."
+
+const DOTS_PATH = `<circle cx="5" cy="12" r="1.6"/><circle cx="12" cy="12" r="1.6"/><circle cx="19" cy="12" r="1.6"/>`
+
+const MONTHS = ["jan", "fev", "mar", "abr", "mai", "jun", "jul", "ago", "set", "out", "nov", "dez"]
 
 function formatBRL(value) {
   const n = Number(value)
@@ -732,188 +650,38 @@ function escapeHtml(str) {
     .replace(/'/g, "&#39;")
 }
 
-// === Construção dos itens de installment ===
-//
-// Quem dispatcha o evento sou eu; o purchase_edit/purchase_remove controllers
-// (cada um no seu arquivo) ouvem e abrem seus modais. Isso mantém os modais
-// independentes de mim — só sei o nome do evento e o shape do detail.
-
-const POPOVER_BLOCKED_TEXT =
-  "Não é possível editar/excluir essa compra: ela tem parcelas em ciclos anteriores já fechados."
-
-const POPOVER_CLOSED_MONTH_TEXT =
-  "Ciclo fechado — não é possível alterar lançamentos."
-
-function buildItemLabel(description, fraction) {
-  const span = document.createElement("span")
-  span.className = "card-item__item-label"
-  span.innerHTML = `${escapeHtml(description)}<span class="card-item__item-installment">${fraction}</span>`
-  return span
+// "12/out"
+function formatShortDate(iso) {
+  if (!iso) return "—"
+  const d = new Date(iso)
+  return `${String(d.getDate()).padStart(2, "0")}/${MONTHS[d.getMonth()]}`
 }
 
-function buildItemAmount(amount) {
-  const span = document.createElement("span")
-  span.className = "card-item__item-amount"
-  span.textContent = formatBRL(amount)
-  return span
+// Título da barra de navegação para o ciclo visualizado.
+function cycleTitle(cycle) {
+  if (cycle.status === "open")   return `Ciclo aberto · desde ${formatShortDate(cycle.started_at)}`
+  if (cycle.status === "closed") return `${formatShortDate(cycle.started_at)} → ${formatShortDate(cycle.closed_at)}`
+  const ahead = cycle.number - cycle.open_number
+  return ahead === 1 ? "Próximo ciclo (prévia)" : `Daqui a ${ahead} ciclos (prévia)`
 }
 
-function buildItemActions({ inst, cardId, monthClosed, controller }) {
-  const wrap = document.createElement("span")
-  wrap.className = "card-item__item-actions"
-
-  wrap.appendChild(buildExcludeToggle({ inst, cardId, controller }))
-
-  wrap.appendChild(buildActionButton({
-    iconPath:    PENCIL_PATH,
-    title:       "Editar compra",
-    eventName:   "purchase:edit-request",
-    inst, cardId, monthClosed,
-  }))
-
-  wrap.appendChild(buildActionButton({
-    iconPath:    TRASH_PATH,
-    title:       "Remover compra",
-    eventName:   "purchase:remove-request",
-    extraClass:  "card-item__item-action--danger",
-    inst, cardId, monthClosed,
-  }))
-
-  return wrap
+function cardMeta(card) {
+  return `Fecha dia ${card.best_day ?? "—"} · vence dia ${card.pay_day ?? "—"}`
 }
 
-// Botão de "ignorar no resumo do ciclo". Sempre clicável (não respeita
-// monthClosed nem purchase_editable — flag não altera valores).
-// Tooltip muda de texto conforme o estado atual da compra.
-function buildExcludeToggle({ inst, cardId, controller }) {
-  const excluded = !!inst.excluded_from_summary
-  const btn = document.createElement("button")
-  btn.type = "button"
-  btn.className = `card-item__item-action ${excluded ? "card-item__item-action--excluded-on" : ""}`.trim()
-  const title = excluded
-    ? "Esta compra está ignorada no resumo do ciclo (saldo da sidebar). Continua somando no Mês/Total aberto do cartão. Clique pra voltar a considerar."
-    : "Não considerar essa compra no resumo do ciclo (saldo da sidebar). Mesmo ignorada, ela continua somando no Mês/Total aberto do cartão. Útil pra compras parceladas que você não quer ver afetando o saldo do mês."
-  btn.title = title
-  btn.setAttribute("aria-label", excluded ? "Voltar a considerar no resumo" : "Não considerar no resumo")
-  btn.dataset.controller = "popover"
-  btn.dataset.popoverTextValue = title
-  btn.innerHTML = `<svg viewBox="0 0 24 24" aria-hidden="true">${excluded ? EYE_OFF_PATH : EYE_PATH}</svg>`
-  // Guard contra double-click: enquanto a request está em andamento, o
-  // botão fica disabled. Após sucesso, loadInstallments re-renderiza o
-  // <li> inteiro (substitui o botão), então o estado disabled é descartado
-  // junto. Em caso de erro mantemos a referência viva e re-habilitamos.
-  btn.addEventListener("click", async () => {
-    if (btn.disabled) return
-    btn.disabled = true
-    try {
-      await controller.toggleExcluded(cardId, inst.purchase_id, excluded)
-    } finally {
-      btn.disabled = false
-    }
-  })
-  return btn
-}
-
-function buildActionButton({ iconPath, title, eventName, inst, cardId, monthClosed, extraClass = "" }) {
-  const btn = document.createElement("button")
-  btn.type = "button"
-  btn.className = `card-item__item-action ${extraClass}`.trim()
-  btn.title = title
-  btn.setAttribute("aria-label", title)
-  btn.innerHTML = `<svg viewBox="0 0 24 24" aria-hidden="true">${iconPath}</svg>`
-
-  // Ciclo fechado tem prioridade na mensagem — é o motivo "macro" de bloqueio.
-  // Se ainda for parcelada com ciclo anterior fechado, cai no popover dela.
-  if (monthClosed) {
-    btn.disabled = true
-    btn.dataset.controller = "popover"
-    btn.dataset.popoverTextValue = POPOVER_CLOSED_MONTH_TEXT
-  } else if (inst.purchase_editable === false) {
-    btn.disabled = true
-    btn.dataset.controller = "popover"
-    btn.dataset.popoverTextValue = POPOVER_BLOCKED_TEXT
-  } else {
-    btn.addEventListener("click", () => {
-      window.dispatchEvent(new CustomEvent(eventName, {
-        detail: {
-          cardId,
-          purchaseId:        inst.purchase_id,
-          description:       inst.description,
-          totalAmount:       inst.purchase_total_amount,
-          installmentsCount: inst.installments_count,
-        },
-      }))
-    })
-  }
-
-  return btn
-}
-
-// SVGs do botão "Virar Ciclo": ativo (seta circular) vs fechado (cadeado).
-const CLOSE_CYCLE_ACTIVE_SVG = `<polyline points="23 4 23 10 17 10"/><path d="M20.49 15A9 9 0 1 1 18 6.36L23 10"/>`
-const CLOSE_CYCLE_LOCKED_SVG = `<rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/>`
-
-const PENCIL_PATH = `<path d="M4 20h4l10.5-10.5a2.121 2.121 0 0 0-3-3L5 17v3z"/><path d="M14.5 5.5l3 3"/>`
-const TRASH_PATH  = `<path d="M3 6h18"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/>`
-const EYE_PATH     = `<path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/>`
-const EYE_OFF_PATH = `<path d="M2 12s3.5-7 10-7c2.2 0 4.1.7 5.7 1.7"/><path d="M22 12s-3.5 7-10 7c-2.2 0-4.1-.7-5.7-1.7"/><line x1="3" y1="3" x2="21" y2="21"/>`
-
-function firstDayOfCurrentMonth() {
-  const now = new Date()
-  return new Date(now.getFullYear(), now.getMonth(), 1)
-}
-
-function todayYM() {
+function todayISO() {
   const d = new Date()
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`
 }
 
-function addMonths(date, n) {
-  return new Date(date.getFullYear(), date.getMonth() + n, 1)
+function readCycleFromURL() {
+  const n = parseInt(new URLSearchParams(window.location.search).get("cycle"), 10)
+  return Number.isFinite(n) && n > 0 ? n : null
 }
 
-function formatYMD(date) {
-  const y = date.getFullYear()
-  const m = String(date.getMonth() + 1).padStart(2, "0")
-  const d = String(date.getDate()).padStart(2, "0")
-  return `${y}-${m}-${d}`
-}
-
-function formatMonthLabel(date) {
-  return date.toLocaleDateString("pt-BR", { month: "long", year: "numeric" })
-}
-
-// Label específico da barra de navegação ("Ciclo abril - 2026"). Os usos em
-// frases corridas (modal de fechar ciclo, notice) seguem com formatMonthLabel
-// pra ler natural ("fechar o ciclo de abril de 2026").
-function formatCycleLabel(date) {
-  const month = date.toLocaleDateString("pt-BR", { month: "long" })
-  return `Ciclo ${month} - ${date.getFullYear()}`
-}
-
-function parseYMD(str) {
-  const [y, m] = String(str).split("-").map((v) => parseInt(v, 10))
-  if (!Number.isFinite(y) || !Number.isFinite(m)) return null
-  return new Date(y, m - 1, 1)
-}
-
-function sameMonth(a, b) {
-  return a && b && a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth()
-}
-
-function readMonthFromURL() {
-  const value = new URLSearchParams(window.location.search).get("month")
-  if (!value) return null
-  // aceita "YYYY-MM" ou "YYYY-MM-DD"
-  const [y, m] = value.split("-").map((v) => parseInt(v, 10))
-  if (!Number.isFinite(y) || !Number.isFinite(m)) return null
-  return new Date(y, m - 1, 1)
-}
-
-function writeMonthToURL(date) {
-  const y = date.getFullYear()
-  const m = String(date.getMonth() + 1).padStart(2, "0")
+function writeCycleToURL(number) {
   const url = new URL(window.location.href)
-  url.searchParams.set("month", `${y}-${m}`)
+  url.searchParams.set("cycle", String(number))
+  url.searchParams.delete("month")
   window.history.replaceState({}, "", url)
 }

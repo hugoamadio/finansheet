@@ -275,7 +275,7 @@
 }
 
 .card-item__items:empty::after {
-  content: "Sem lançamentos nesse mês.";
+  content: "Sem lançamentos neste ciclo.";
   display: block;
   font-style: italic;
   opacity: 0.6;
@@ -356,21 +356,6 @@
   opacity: 0.4;
   cursor: not-allowed;
   pointer-events: auto;
-}
-
-/* Estado "ignorada no resumo": linha riscada e botão preenchido pra dar
-   feedback de que a flag está ativa sem precisar abrir o tooltip. */
-.card-item__items li.card-item__items-row--excluded .card-item__item-label,
-.card-item__items li.card-item__items-row--excluded .card-item__item-amount {
-  text-decoration: line-through;
-  opacity: 0.55;
-}
-
-.card-item__item-action--excluded-on {
-  background: rgba(255, 255, 255, 0.32);
-}
-.card-item__item-action--excluded-on:hover:not([disabled]) {
-  background: rgba(255, 255, 255, 0.42);
 }
 
 .card-item__more {

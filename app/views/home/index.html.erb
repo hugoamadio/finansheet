@@ -1,9 +1,7 @@
 <% content_for :title, "FinanSheet — Cartões" %>
 
 <section class="cards-page" data-controller="cards">
-  <%# Wrapper genérico: vira sticky no mobile (ver .page-sticky-top no
-      cards.css). Em desktop é só uma <div> sem efeito. Reutilizável em
-      qualquer página que precise fixar o topo em telas pequenas. %>
+  <%# Wrapper genérico: vira sticky no mobile (ver .page-sticky-top no cards.css). %>
   <div class="page-sticky-top">
     <header class="cards-page__header">
       <h1 class="cards-page__title">Cartões</h1>
@@ -17,39 +15,38 @@
     </header>
 
     <nav class="month-nav">
-    <button type="button" class="month-nav__nav" data-action="cards#prevMonth"
-            data-cards-target="prevButton" aria-label="Mês anterior" title="Mês anterior">
-      <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-        <polyline points="15 18 9 12 15 6"/>
-      </svg>
-    </button>
+      <button type="button" class="month-nav__nav" data-action="cards#prevCycle"
+              data-cards-target="prevButton" aria-label="Ciclo anterior" title="Ciclo anterior">
+        <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <polyline points="15 18 9 12 15 6"/>
+        </svg>
+      </button>
 
-    <div class="month-nav__center">
-      <span class="month-nav__label" data-cards-target="monthLabel">—</span>
-      <span class="month-nav__closed-tag" data-cards-target="closedTag" hidden>Fechado</span>
-    </div>
+      <div class="month-nav__center">
+        <span class="month-nav__label" data-cards-target="cycleLabel">—</span>
+        <span class="month-nav__closed-tag" data-cards-target="statusTag" hidden></span>
+      </div>
 
-    <button type="button" class="month-nav__nav" data-action="cards#nextMonth"
-            aria-label="Próximo mês" title="Próximo mês">
-      <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-        <polyline points="9 18 15 12 9 6"/>
-      </svg>
-    </button>
+      <button type="button" class="month-nav__nav" data-action="cards#nextCycle"
+              data-cards-target="nextButton" aria-label="Próximo ciclo" title="Próximo ciclo">
+        <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <polyline points="9 18 15 12 9 6"/>
+        </svg>
+      </button>
 
-    <button type="button" class="action-btn action-btn--success" data-action="cards#openCloseCycle"
-            data-cards-target="closeCycleButton">
-      <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" data-cards-target="closeCycleIcon">
-        <polyline points="23 4 23 10 17 10"/>
-        <path d="M20.49 15A9 9 0 1 1 18 6.36L23 10"/>
-      </svg>
-      <span data-cards-target="closeCycleLabel">Virar Ciclo</span>
-    </button>
+      <button type="button" class="action-btn action-btn--success" data-action="cards#turnOrBack"
+              data-cards-target="turnButton">
+        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <polyline points="23 4 23 10 17 10"/>
+          <path d="M20.49 15A9 9 0 1 1 18 6.36L23 10"/>
+        </svg>
+        <span data-cards-target="turnLabel">Virar ciclo</span>
+      </button>
     </nav>
   </div><%# /.page-sticky-top %>
 
   <div class="page-notice" data-cards-target="notice" hidden>
     <span data-cards-target="noticeText"></span>
-    <button type="button" class="page-notice__action" data-action="cards#followNotice" data-cards-target="noticeAction" hidden></button>
     <button type="button" class="page-notice__close" data-action="cards#dismissNotice" aria-label="Fechar">×</button>
   </div>
 
@@ -70,17 +67,19 @@
         <span class="card-item__mode-tag" data-mode></span>
       </div>
 
+      <button type="button" class="card-item__check" data-check data-action="cards#toggleCheck" hidden>Marcar conferido</button>
+
       <ul class="card-item__items" data-items></ul>
-      <div class="card-item__more" data-more hidden></div>
+      <button type="button" class="card-item__more" data-more data-action="cards#toggleMore" hidden></button>
 
       <div class="card-item__totals">
         <div>
-          Mês
-          <span class="card-item__total-value" data-month-total>R$ 0,00</span>
+          Neste ciclo
+          <span class="card-item__total-value" data-cycle-total>R$ 0,00</span>
         </div>
         <div>
-          Total aberto
-          <span class="card-item__total-value" data-total-open>R$ 0,00</span>
+          Parcelas futuras
+          <span class="card-item__total-value" data-future-total>R$ 0,00</span>
         </div>
       </div>
 
@@ -137,11 +136,11 @@
 
       <div class="form-row">
         <label class="form-field">
-          Vence dia (1-31)
+          Vence dia <span style="opacity:0.6;font-weight:400">(opcional)</span>
           <input type="number" name="pay_day" min="1" max="31" data-cards-target="fieldPayDay">
         </label>
         <label class="form-field">
-          Fecha dia (1-31)
+          Fecha dia <span style="opacity:0.6;font-weight:400">(opcional)</span>
           <input type="number" name="best_day" min="1" max="31" data-cards-target="fieldBestDay">
         </label>
       </div>
@@ -188,7 +187,7 @@
       <label class="form-field form-field--inline">
         <input type="checkbox" data-cards-target="purchaseFieldHasPaid" data-action="change->cards#togglePurchasePaid">
         Já paguei algumas parcelas dessa compra
-        <span class="form-field__hint" data-controller="popover" data-popover-text-value="Marque se você já pagou parcelas em meses anteriores. O sistema vai cadastrar apenas as que faltam, começando com o número correto (ex.: 5ª/6). O valor total e a quantidade de parcelas continuam sendo da compra inteira.">ⓘ</span>
+        <span class="form-field__hint" data-controller="popover" data-popover-text-value="Marque se você já pagou parcelas antes de cadastrar. O sistema cadastra só as que faltam, começando pela próxima (ex.: 5ª/6) neste ciclo. O valor total e a quantidade de parcelas continuam sendo da compra inteira.">ⓘ</span>
       </label>
 
       <label class="form-field" data-cards-target="purchaseFieldPaidWrapper" hidden>
@@ -196,14 +195,15 @@
         <input type="number" min="1" max="48" data-cards-target="purchaseFieldPaidCount" data-action="input->cards#updatePurchasePreview">
       </label>
 
-      <label class="form-field" data-cards-target="purchaseFieldDateWrapper">
-        Data da compra <span style="opacity:0.6;font-weight:400">(opcional, default hoje)</span>
-        <input type="date" data-cards-target="purchaseFieldDate" data-action="input->cards#updatePurchasePreview">
+      <label class="form-field">
+        De outra pessoa? <span style="opacity:0.6;font-weight:400">(nome; vazio se a compra é sua)</span>
+        <input type="text" list="third-party-names" placeholder="Ex.: Mãe" data-cards-target="purchaseFieldThirdParty">
+        <datalist id="third-party-names" data-cards-target="thirdPartyNames"></datalist>
       </label>
 
-      <label class="form-field" data-cards-target="purchaseFieldNextDueWrapper" hidden>
-        Mês da próxima parcela a vencer
-        <input type="month" data-cards-target="purchaseFieldNextDue" data-action="input->cards#updatePurchasePreview">
+      <label class="form-field">
+        Data da compra <span style="opacity:0.6;font-weight:400">(só para registro)</span>
+        <input type="date" data-cards-target="purchaseFieldDate">
       </label>
 
       <div class="modal-purchase__preview" data-cards-target="purchasePreview" hidden></div>
@@ -218,27 +218,4 @@
   <%# Modais independentes de editar/remover compra (ouvem eventos disparados aqui) %>
   <%= render "shared/purchase_edit_modal" %>
   <%= render "shared/purchase_remove_modal" %>
-
-  <%# Modal de confirmação "Virar Ciclo" %>
-  <dialog class="modal" data-cards-target="closeCycleModal">
-    <header class="modal__header">
-      <h2 class="modal__title">Virar ciclo</h2>
-      <button type="button" class="modal__close" data-action="cards#closeCloseCycleModal" aria-label="Fechar">×</button>
-    </header>
-    <div class="modal__body">
-      <p style="margin: 0 0 1rem;">
-        Você está prestes a virar o ciclo de
-        <strong data-cards-target="closeCycleMonth">—</strong>.
-      </p>
-      <div data-cards-target="closeCycleSummary" style="background: #f1f5f9; border-radius: 6px; padding: 0.7rem 0.9rem; font-size: 0.9rem;"></div>
-      <p style="margin: 1rem 0 0; font-size: 0.85rem; color: #64748b;">
-        Após confirmar, todos os lançamentos desse mês ficarão imutáveis.
-      </p>
-
-      <div class="modal__footer" style="margin: 1rem -1.25rem -1.25rem; padding: 1rem 1.25rem;">
-        <button type="button" class="btn btn--ghost" data-action="cards#closeCloseCycleModal">Cancelar</button>
-        <button type="button" class="btn btn--primary" data-action="cards#confirmCloseCycle" data-cards-target="closeCycleConfirm">Confirmar</button>
-      </div>
-    </div>
-  </dialog>
 </section>

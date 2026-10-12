@@ -10,6 +10,7 @@
 @import "popover.css";
 @import "fixed_expenses.css";
 @import "tour.css";
+@import "cycles.css";
 
 :root {
   --sidebar-width: 290px;
