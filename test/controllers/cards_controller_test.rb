@@ -44,4 +44,13 @@ class CardsControllerTest < ActionDispatch::IntegrationTest
 
     assert JSON.parse(response.body)["cards"].first["checked"]
   end
+
+  test "DELETE removes a card that was checked in a cycle" do
+    @user.open_cycle.card_checks.create!(card: @card, checked_at: Time.current)
+
+    delete "/api/cards/#{@card.id}", headers: @auth, as: :json
+
+    assert_response :ok
+    assert_not Card.exists?(@card.id)
+  end
 end
