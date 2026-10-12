@@ -90,6 +90,31 @@ class CardPurchasesControllerTest < ActionDispatch::IntegrationTest
     assert_nil @purchase.reload.third_party_name
   end
 
+  test "POST prepay and DELETE prepay" do
+    post "/api/cards/#{@card.id}/purchases/#{@purchase.id}/prepay", headers: @auth, as: :json
+    assert_response :ok
+    assert_equal [@user.open_cycle.number], @purchase.reload.installments.distinct.pluck(:cycle_number)
+
+    delete "/api/cards/#{@card.id}/purchases/#{@purchase.id}/prepay", headers: @auth, as: :json
+    assert_response :ok
+    assert_equal 4, @purchase.reload.installments.distinct.count(:cycle_number)
+  end
+
+  test "POST cancel_remaining refuses a closed installment and cancels an open one" do
+    cycle = @user.cycles.create!(number: 99, started_at: 1.month.ago, closed_at: Time.current)
+    @purchase.installments.where(number: 1).update_all(cycle_id: cycle.id)
+
+    post "/api/cards/#{@card.id}/purchases/#{@purchase.id}/cancel_remaining",
+         params: { from_number: 1 }, headers: @auth, as: :json
+    assert_response :unprocessable_entity
+
+    post "/api/cards/#{@card.id}/purchases/#{@purchase.id}/cancel_remaining",
+         params: { from_number: 2 }, headers: @auth, as: :json
+    assert_response :ok
+    assert_equal 1, @purchase.reload.installments_count
+    assert_equal 300.to_d, @purchase.total_amount
+  end
+
   private
 
   def create_purchase(total:, count:)

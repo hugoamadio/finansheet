@@ -1,6 +1,6 @@
 class CardPurchasesController < ApiController
   before_action :load_card
-  before_action :load_purchase, only: [:update, :destroy, :third_party]
+  before_action :load_purchase, only: [:update, :destroy, :third_party, :prepay, :undo_prepay, :cancel_remaining]
 
   def create
     form = CardPurchaseForm.new(
@@ -51,6 +51,30 @@ class CardPurchasesController < ApiController
   def third_party
     @purchase.update!(third_party_name: params[:third_party_name])
     render json: { purchase: serialize(@purchase) }
+  end
+
+  # POST .../prepay — parcelas futuras vêm para o ciclo aberto.
+  def prepay
+    Purchases::PrepayService.new(card_purchase: @purchase).call
+    render json: { purchase: serialize(@purchase.reload) }
+  rescue Purchases::PrepayService::NothingToPrepay
+    render json: { errors: ["essa compra não tem parcelas futuras"] }, status: :unprocessable_entity
+  end
+
+  # DELETE .../prepay — devolve as parcelas antecipadas aos ciclos de origem.
+  def undo_prepay
+    Purchases::UndoPrepayService.new(card_purchase: @purchase).call
+    render json: { purchase: serialize(@purchase.reload) }
+  rescue Purchases::UndoPrepayService::NothingToUndo
+    render json: { errors: ["não há quitação para desfazer neste ciclo"] }, status: :unprocessable_entity
+  end
+
+  # POST .../cancel_remaining { from_number }
+  def cancel_remaining
+    Purchases::CancelRemainingService.new(card_purchase: @purchase, from_number: params.require(:from_number)).call
+    render json: { purchase: serialize(@purchase.reload) }
+  rescue Purchases::CancelRemainingService::InvalidStart => e
+    render json: { errors: [e.message] }, status: :unprocessable_entity
   end
 
   private
