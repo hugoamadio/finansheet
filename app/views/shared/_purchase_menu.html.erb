@@ -1,0 +1,49 @@
+<%# Menu de ações de uma compra + diálogos de "cancelar o restante" e
+    "de outra pessoa". Componente independente: abre com
+    "purchase:menu-request", disparado pelo botão "⋯" do cards_controller. %>
+<div data-controller="purchase-menu">
+  <div class="purchase-menu" role="menu" data-purchase-menu-target="menu" hidden></div>
+
+  <dialog class="modal" data-purchase-menu-target="cancelDialog">
+    <header class="modal__header">
+      <h2 class="modal__title">Cancelar o restante</h2>
+      <button type="button" class="modal__close" data-action="purchase-menu#closeCancel" aria-label="Fechar">×</button>
+    </header>
+    <form class="modal__body" data-action="submit->purchase-menu#submitCancel">
+      <p style="margin: 0 0 1rem;" data-purchase-menu-target="cancelSummary"></p>
+      <label class="form-field">
+        Cancelar a partir da parcela
+        <select required data-purchase-menu-target="cancelFrom"></select>
+      </label>
+      <p style="margin: 0.75rem 0 0; font-size: 0.85rem; color: #64748b;">
+        As parcelas canceladas somem e o total da compra passa a ser o que já foi pago.
+      </p>
+      <div class="modal__footer" style="margin: 1rem -1.25rem -1.25rem; padding: 1rem 1.25rem;">
+        <button type="button" class="btn btn--ghost" data-action="purchase-menu#closeCancel">Voltar</button>
+        <button type="submit" class="btn btn--primary" data-purchase-menu-target="cancelSubmit">Cancelar parcelas</button>
+      </div>
+    </form>
+  </dialog>
+
+  <dialog class="modal" data-purchase-menu-target="thirdPartyDialog">
+    <header class="modal__header">
+      <h2 class="modal__title">De outra pessoa</h2>
+      <button type="button" class="modal__close" data-action="purchase-menu#closeThirdParty" aria-label="Fechar">×</button>
+    </header>
+    <form class="modal__body" data-action="submit->purchase-menu#submitThirdParty">
+      <p style="margin: 0 0 1rem;" data-purchase-menu-target="thirdPartySummary"></p>
+      <label class="form-field">
+        Quem usou o cartão
+        <input type="text" list="purchase-menu-names" placeholder="Ex.: Mãe" data-purchase-menu-target="thirdPartyInput">
+        <datalist id="purchase-menu-names" data-purchase-menu-target="thirdPartyNames"></datalist>
+      </label>
+      <p style="margin: 0.75rem 0 0; font-size: 0.85rem; color: #64748b;">
+        Deixe vazio para voltar a ser uma compra sua. Ela continua somando no cartão, mas sai da sua sobra.
+      </p>
+      <div class="modal__footer" style="margin: 1rem -1.25rem -1.25rem; padding: 1rem 1.25rem;">
+        <button type="button" class="btn btn--ghost" data-action="purchase-menu#closeThirdParty">Cancelar</button>
+        <button type="submit" class="btn btn--primary" data-purchase-menu-target="thirdPartySubmit">Salvar</button>
+      </div>
+    </form>
+  </dialog>
+</div>
