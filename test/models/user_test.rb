@@ -57,21 +57,4 @@ class UserTest < ActiveSupport::TestCase
     assert_equal Date.new(2026, 4, 30), @user.salary_date_for(year: 2026, month: 4)
     assert_equal Date.new(2026, 1, 31), @user.salary_date_for(year: 2026, month: 1)
   end
-
-  test "next_open_cycle_month returns the candidate month when it is open" do
-    assert_equal Date.new(2026, 4, 1), @user.next_open_cycle_month(Date.new(2026, 4, 1))
-  end
-
-  test "next_open_cycle_month skips closed cycles" do
-    @user.cycles.create!(reference_month: Date.new(2026, 4, 1), closed_at: Time.current)
-    @user.cycles.create!(reference_month: Date.new(2026, 5, 1), closed_at: Time.current)
-    assert_equal Date.new(2026, 6, 1), @user.next_open_cycle_month(Date.new(2026, 4, 1))
-  end
-
-  test "next_open_cycle_month defaults from current month" do
-    travel_to Date.new(2026, 4, 28) do
-      @user.cycles.create!(reference_month: Date.new(2026, 4, 1), closed_at: Time.current)
-      assert_equal Date.new(2026, 5, 1), @user.next_open_cycle_month
-    end
-  end
 end

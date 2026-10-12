@@ -64,16 +64,6 @@ class User < ApplicationRecord
     cycles.open.first!
   end
 
-  # Primeiro mês com ciclo ainda aberto a partir de `from` (default: mês corrente).
-  # Usado pra: ciclo ativo no boot da home, due_month de novas compras, e
-  # rebuild de installments em edições — todos compartilham a regra "pula
-  # ciclos já fechados".
-  def next_open_cycle_month(from = Date.current.beginning_of_month)
-    candidate = from
-    candidate = candidate >> 1 while cycles.exists?(reference_month: candidate)
-    candidate
-  end
-
   # Devolve a data efetiva do salário num mês — clampando dias inexistentes
   # (ex: dia 31 em fevereiro vira o último dia do mês). Quando o usuário
   # marcou salary_on_last_day, sempre devolve o último dia do mês.

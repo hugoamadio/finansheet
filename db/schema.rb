@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_10_12_000002) do
+ActiveRecord::Schema[8.1].define(version: 2026_10_12_000003) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pgcrypto"
@@ -20,7 +20,6 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_12_000002) do
     t.uuid "card_id", null: false
     t.datetime "created_at", null: false
     t.text "description", null: false
-    t.boolean "excluded_from_summary", default: false, null: false
     t.integer "installments_count", default: 1, null: false
     t.integer "installments_paid", default: 0, null: false
     t.date "purchased_on", null: false
@@ -64,31 +63,29 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_12_000002) do
     t.datetime "closed_at"
     t.datetime "created_at", null: false
     t.decimal "expected_income", precision: 12, scale: 2, default: "0.0", null: false
-    t.integer "number"
-    t.date "reference_month"
-    t.datetime "started_at"
-    t.decimal "total_expenses", precision: 12, scale: 2, default: "0.0", null: false
+    t.integer "number", null: false
+    t.datetime "started_at", null: false
     t.decimal "total_fixed_expenses", precision: 12, scale: 2, default: "0.0", null: false
     t.decimal "total_income", precision: 12, scale: 2, default: "0.0", null: false
     t.decimal "total_own_cards", precision: 12, scale: 2, default: "0.0", null: false
     t.decimal "total_third_party", precision: 12, scale: 2, default: "0.0", null: false
     t.datetime "updated_at", null: false
     t.uuid "user_id", null: false
-    t.index ["user_id", "reference_month"], name: "index_cycles_on_user_id_and_reference_month", unique: true
+    t.index ["user_id", "number"], name: "index_cycles_on_user_id_and_number", unique: true
     t.index ["user_id"], name: "index_cycles_on_user_id"
+    t.index ["user_id"], name: "index_cycles_one_open_per_user", unique: true, where: "(closed_at IS NULL)"
   end
 
   create_table "fixed_expense_payments", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
     t.decimal "amount", precision: 12, scale: 2, null: false
     t.datetime "created_at", null: false
     t.uuid "cycle_id"
-    t.integer "cycle_number"
+    t.integer "cycle_number", null: false
     t.uuid "fixed_expense_id", null: false
     t.datetime "paid_at"
-    t.date "reference_month"
     t.datetime "updated_at", null: false
     t.index ["cycle_id"], name: "index_fixed_expense_payments_on_cycle_id"
-    t.index ["fixed_expense_id", "reference_month"], name: "idx_on_fixed_expense_id_reference_month_07ef94a6f1", unique: true
+    t.index ["fixed_expense_id", "cycle_number"], name: "idx_on_fixed_expense_id_cycle_number_0f7981897a", unique: true
     t.index ["fixed_expense_id"], name: "index_fixed_expense_payments_on_fixed_expense_id"
   end
 
@@ -101,22 +98,11 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_12_000002) do
     t.integer "installments_paid", default: 0, null: false
     t.text "name", null: false
     t.integer "start_cycle_number"
-    t.date "start_month"
     t.datetime "updated_at", null: false
     t.uuid "user_id", null: false
     t.index ["user_id"], name: "index_fixed_expenses_on_user_id"
     t.check_constraint "due_day IS NULL OR due_day >= 1 AND due_day <= 31", name: "fixed_expenses_due_day_range"
-  end
-
-  create_table "incomes", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
-    t.decimal "amount", precision: 12, scale: 2, null: false
-    t.datetime "created_at", null: false
-    t.date "reference_month", null: false
-    t.datetime "updated_at", null: false
-    t.uuid "user_id", null: false
-    t.index ["user_id", "reference_month"], name: "index_incomes_on_user_id_and_reference_month", unique: true
-    t.index ["user_id"], name: "index_incomes_on_user_id"
-    t.check_constraint "amount >= 0::numeric", name: "incomes_amount_non_negative"
+    t.check_constraint "installments_count IS NULL AND start_cycle_number IS NULL OR installments_count IS NOT NULL AND start_cycle_number IS NOT NULL AND installments_paid >= 0 AND installments_paid < installments_count", name: "fixed_expenses_installments_consistency"
   end
 
   create_table "installments", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
@@ -124,8 +110,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_12_000002) do
     t.uuid "card_purchase_id", null: false
     t.datetime "created_at", null: false
     t.uuid "cycle_id"
-    t.integer "cycle_number"
-    t.date "due_month"
+    t.integer "cycle_number", null: false
     t.integer "number", null: false
     t.integer "original_cycle_number"
     t.datetime "reimbursed_at"
@@ -133,7 +118,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_12_000002) do
     t.index ["card_purchase_id", "number"], name: "index_installments_on_card_purchase_id_and_number", unique: true
     t.index ["card_purchase_id"], name: "index_installments_on_card_purchase_id"
     t.index ["cycle_id"], name: "index_installments_on_cycle_id"
-    t.index ["due_month"], name: "index_installments_on_due_month"
+    t.index ["cycle_number"], name: "index_installments_on_cycle_number"
     t.check_constraint "number >= 1", name: "installments_number_positive"
   end
 
@@ -172,7 +157,6 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_12_000002) do
   add_foreign_key "fixed_expense_payments", "cycles"
   add_foreign_key "fixed_expense_payments", "fixed_expenses"
   add_foreign_key "fixed_expenses", "users"
-  add_foreign_key "incomes", "users"
   add_foreign_key "installments", "card_purchases"
   add_foreign_key "installments", "cycles"
   add_foreign_key "user_cards", "cards"
