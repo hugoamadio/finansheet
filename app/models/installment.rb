@@ -9,7 +9,7 @@ class Installment < ApplicationRecord
   validates :number,    numericality: { greater_than: 0, only_integer: true },
                         uniqueness: { scope: :card_purchase_id }
   validates :amount,    numericality: { greater_than: 0 }
-  validates :due_month, presence: true
+  validates :cycle_number, numericality: { greater_than: 0, only_integer: true }
 
   def closed?
     cycle_id.present?

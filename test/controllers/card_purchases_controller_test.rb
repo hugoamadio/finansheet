@@ -65,13 +65,37 @@ class CardPurchasesControllerTest < ActionDispatch::IntegrationTest
     assert_response :unauthorized
   end
 
+  test "POST puts the first installment in the open cycle and keeps third party" do
+    post "/api/cards/#{@card.id}/purchases",
+         params: { purchase: { description: "Fogão", total_amount: 300, installments_count: 3, third_party_name: "Mãe" } },
+         headers: @auth, as: :json
+
+    assert_response :created
+    body = JSON.parse(response.body)["purchase"]
+    assert_equal "Mãe", body["third_party_name"]
+    assert_equal @user.open_cycle.number, body["installments"].first["cycle_number"]
+  end
+
+  test "PATCH third_party sets and clears the name even with a closed installment" do
+    cycle = @user.cycles.create!(number: 99, started_at: 1.month.ago, closed_at: Time.current)
+    @purchase.installments.first.update_columns(cycle_id: cycle.id)
+
+    patch "/api/cards/#{@card.id}/purchases/#{@purchase.id}/third_party",
+          params: { third_party_name: "Mãe" }, headers: @auth, as: :json
+    assert_response :ok
+    assert_equal "Mãe", @purchase.reload.third_party_name
+
+    patch "/api/cards/#{@card.id}/purchases/#{@purchase.id}/third_party",
+          params: { third_party_name: "" }, headers: @auth, as: :json
+    assert_nil @purchase.reload.third_party_name
+  end
+
   private
 
   def create_purchase(total:, count:)
     form = CardPurchaseForm.new(
       user: @user, card: @card, description: "Compra base",
       total_amount: total, installments_count: count,
-      purchased_on: Date.new(2026, 4, 24),
     )
     form.save || raise(form.errors.full_messages.inspect)
     form.card_purchase

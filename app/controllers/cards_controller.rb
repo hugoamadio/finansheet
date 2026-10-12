@@ -1,26 +1,19 @@
 class CardsController < ApiController
+  include CycleParam
+
   before_action :load_card, only: [:update, :destroy]
 
+  # GET /api/cards?cycle=N — cabeçalho do ciclo visualizado + cartões, com
+  # o "conferido" daquele ciclo.
   def index
-    # Sem ?month=, o boot cai no ciclo ativo (1º aberto a partir de hoje).
-    month = parse_month(params[:month]) || current_user.next_open_cycle_month
-    cards = current_user.cards.order(:created_at)
-
-    has_earlier_data = Installment
-      .joins(:card_purchase)
-      .where(card_purchases: { user_id: current_user.id })
-      .where("due_month < ?", month)
-      .exists?
-
-    month_cycle  = current_user.cycles.find_by(reference_month: month)
-    month_income = current_user.incomes.find_by(reference_month: month)
+    open    = current_user.open_cycle
+    number  = cycle_number_param
+    cycle   = current_user.cycles.find_by(number:)
+    checked = cycle ? cycle.card_checks.pluck(:card_id) : []
 
     render json: {
-      month:            month,
-      has_earlier_data: has_earlier_data,
-      month_closed_at:  month_cycle&.closed_at,
-      expected_income:  month_income&.amount&.to_f,
-      cards:            cards.map { |c| serialize(c) },
+      cycle: serialize_cycle(number, cycle, open),
+      cards: current_user.cards.order(:created_at).map { |c| serialize(c).merge(checked: checked.include?(c.id)) },
     }
   end
 
@@ -73,11 +66,21 @@ class CardsController < ApiController
     }
   end
 
-  def parse_month(value)
-    return nil if value.blank?
+  def serialize_cycle(number, cycle, open)
+    status = if cycle&.closed? then "closed"
+             elsif number == open.number then "open"
+             else "upcoming"
+             end
 
-    Date.parse(value).beginning_of_month
-  rescue ArgumentError
-    nil
+    {
+      number:          number,
+      status:          status,
+      started_at:      cycle&.started_at,
+      closed_at:       cycle&.closed_at,
+      expected_income: (cycle&.closed? ? cycle.total_income : open.expected_income).to_f,
+      first_number:    current_user.cycles.minimum(:number),
+      open_number:     open.number,
+      max_number:      open.number + CycleParam::MAX_AHEAD,
+    }
   end
 end

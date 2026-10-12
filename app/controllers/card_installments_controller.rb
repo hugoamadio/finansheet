@@ -1,29 +1,28 @@
 class CardInstallmentsController < ApiController
-  ITEMS_LIMIT = 10
+  include CycleParam
 
   before_action :load_card
 
+  # GET /api/cards/:card_id/installments?cycle=N
+  # Parcelas do cartão no ciclo + totais (todas, só as do usuário, e o que
+  # cai nos ciclos seguintes) + ações permitidas por compra.
   def index
-    month = parse_month(params[:month]) || Date.current.beginning_of_month
-
+    number      = cycle_number_param
+    open_number = current_user.open_cycle.number
     card_scope  = Installment.joins(:card_purchase).where(card_purchases: { card_id: @card.id })
-    open_scope  = card_scope.where(cycle_id: nil)
-    month_scope = card_scope.where(due_month: month)
+    cycle_scope = card_scope.where(cycle_number: number)
 
-    month_count   = month_scope.count
-    month_records = month_scope.order(due_month: :asc, number: :asc).limit(ITEMS_LIMIT).includes(:card_purchase)
-
-    closed_purchase_ids = closed_purchase_ids_for(month_records)
+    records = cycle_scope.includes(:card_purchase)
+                         .order(Arel.sql("card_purchases.created_at DESC, installments.number ASC"))
+                         .to_a
+    actions = Purchases::Actions.for(records.map(&:card_purchase).uniq, open_number:)
 
     render json: {
-      month:                       month,
-      month_total:                 month_scope.sum(:amount).to_f,
-      month_total_for_summary:     month_scope
-                                     .where(card_purchases: { excluded_from_summary: false })
-                                     .sum(:amount).to_f,
-      total_open:                  open_scope.sum(:amount).to_f,
-      month_installments:          month_records.map { |i| serialize(i, closed_purchase_ids) },
-      month_installments_overflow: [month_count - ITEMS_LIMIT, 0].max,
+      cycle:           number,
+      cycle_total:     cycle_scope.sum(:amount).to_f,
+      cycle_total_own: cycle_scope.where(card_purchases: { third_party_name: nil }).sum(:amount).to_f,
+      future_total:    card_scope.where("installments.cycle_number > ?", number).sum(:amount).to_f,
+      installments:    records.map { |i| serialize(i, actions.fetch(i.card_purchase_id)) },
     }
   end
 
@@ -36,21 +35,7 @@ class CardInstallmentsController < ApiController
     render json: { errors: ["cartão não encontrado"] }, status: :not_found
   end
 
-  # Resolve em UMA query quais purchase_ids têm pelo menos uma parcela
-  # já fechada (cycle_id NOT NULL) — usado pra setar `purchase_editable`
-  # no payload sem fazer N+1 por item da listagem.
-  def closed_purchase_ids_for(records)
-    purchase_ids = records.map(&:card_purchase_id).uniq
-    return Set.new if purchase_ids.empty?
-
-    Installment
-      .where(card_purchase_id: purchase_ids)
-      .where.not(cycle_id: nil)
-      .pluck(:card_purchase_id)
-      .to_set
-  end
-
-  def serialize(installment, closed_purchase_ids)
+  def serialize(installment, flags)
     purchase = installment.card_purchase
 
     {
@@ -58,20 +43,19 @@ class CardInstallmentsController < ApiController
       number:                installment.number,
       installments_count:    purchase.installments_count,
       amount:                installment.amount.to_f,
-      due_month:             installment.due_month,
+      cycle_number:          installment.cycle_number,
+      prepaid:               installment.original_cycle_number.present?,
       description:           purchase.description,
       purchase_id:           purchase.id,
       purchase_total_amount: purchase.total_amount.to_f,
-      purchase_editable:     !closed_purchase_ids.include?(purchase.id),
-      excluded_from_summary: purchase.excluded_from_summary,
+      purchased_on:          purchase.purchased_on,
+      third_party_name:      purchase.third_party_name,
+      reimbursed:            installment.reimbursed_at.present?,
+      cancelled:             purchase.cancelled_at.present?,
+      editable:              flags.editable,
+      can_prepay:            flags.can_prepay,
+      can_undo_prepay:       flags.can_undo_prepay,
+      cancel_from:           flags.cancel_from,
     }
-  end
-
-  def parse_month(value)
-    return nil if value.blank?
-
-    Date.parse(value).beginning_of_month
-  rescue ArgumentError
-    nil
   end
 end

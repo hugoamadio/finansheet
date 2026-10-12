@@ -27,7 +27,7 @@ Rails.application.routes.draw do
   scope :api, defaults: { format: :json } do
     resources :cards, only: [:index, :create, :update, :destroy] do
       resources :purchases,    only: [:create, :update, :destroy], controller: "card_purchases" do
-        member { patch :toggle_excluded }
+        member { patch :third_party }
       end
       resources :installments, only: [:index],                     controller: "card_installments"
     end

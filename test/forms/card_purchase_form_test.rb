@@ -3,141 +3,73 @@ require "test_helper"
 class CardPurchaseFormTest < ActiveSupport::TestCase
   setup do
     @user = User.create!(email: "test@finansheet.local", password: "secret123")
-    @card = @user.cards.create!(name: "Nubank", bank: "Nubank", mode: :credit, best_day: 29, pay_day: 7)
+    @card = @user.cards.create!(name: "Nubank", bank: "Nubank", mode: :credit)
+    @open = @user.open_cycle
   end
 
-  test "creates purchase with N installments when buying before best_day" do
-    form = CardPurchaseForm.new(
-      user: @user,
-      card: @card,
-      description: "Celular novo",
-      total_amount: 1440,
-      installments_count: 8,
-      purchased_on: Date.new(2026, 4, 24),
-    )
+  def build(**attrs)
+    CardPurchaseForm.new(user: @user, card: @card, description: "Celular novo",
+                         total_amount: 1440, installments_count: 8, **attrs)
+  end
 
-    assert form.save, "expected form to save: #{form.errors.full_messages.inspect}"
+  test "first installment goes to the open cycle, one per cycle after that" do
+    form = build(purchased_on: Date.new(2026, 1, 15))
 
+    assert form.save, form.errors.full_messages.inspect
     purchase = form.card_purchase
-    assert_equal "Celular novo",        purchase.description
-    assert_equal 8,                     purchase.installments_count
-    assert_equal 1440,                  purchase.total_amount
-    assert_equal Date.new(2026, 4, 24), purchase.purchased_on
-    assert_equal 8,                     purchase.installments.count
-
-    expected_due_months = (0..7).map { |i| Date.new(2026, 4, 1) >> i }
-    assert_equal expected_due_months, purchase.installments.order(:number).pluck(:due_month)
-
+    assert_equal Date.new(2026, 1, 15), purchase.purchased_on
+    assert_equal (@open.number..@open.number + 7).to_a, purchase.installments.order(:number).pluck(:cycle_number)
     assert_equal [180] * 8, purchase.installments.order(:number).pluck(:amount).map(&:to_i)
   end
 
   test "puts division remainder on last installment" do
-    form = CardPurchaseForm.new(
-      user: @user,
-      card: @card,
-      description: "Pizza",
-      total_amount: 100,
-      installments_count: 3,
-      purchased_on: Date.new(2026, 4, 24),
-    )
+    form = build(total_amount: 100, installments_count: 3)
 
-    assert form.save, form.errors.full_messages.inspect
-
+    assert form.save
     amounts = form.card_purchase.installments.order(:number).pluck(:amount)
     assert_equal [33.33.to_d, 33.33.to_d, 33.34.to_d], amounts
-    assert_equal 100.to_d, amounts.sum
   end
 
-  test "purchase ON best_day stays in current month" do
-    form = CardPurchaseForm.new(
-      user: @user, card: @card, description: "X",
-      total_amount: 100, installments_count: 1,
-      purchased_on: Date.new(2026, 4, 29), # exato best_day → fatura corrente
-    )
+  test "with paid installments the next one lands in the open cycle" do
+    form = build(total_amount: 1000, installments_count: 10, installments_paid: 9)
+
     assert form.save
-    assert_equal Date.new(2026, 4, 1), form.card_purchase.installments.first.due_month
+    installment = form.card_purchase.installments.sole
+    assert_equal 10, installment.number
+    assert_equal @open.number, installment.cycle_number
+    assert_equal 100.to_d, installment.amount
   end
 
-  test "purchase always lands on the month it was made" do
-    form = CardPurchaseForm.new(
-      user: @user, card: @card, description: "X",
-      total_amount: 100, installments_count: 1,
-      purchased_on: Date.new(2026, 4, 30), # após best_day, mas o mês da compra é abril
-    )
+  test "card without closing day accepts purchases" do
+    assert build.save
+  end
+
+  test "saves third party name" do
+    form = build(third_party_name: " Mãe ")
+
     assert form.save
-    assert_equal Date.new(2026, 4, 1), form.card_purchase.installments.first.due_month
+    assert_equal "Mãe", form.card_purchase.third_party_name
   end
 
-  test "single-installment purchase creates 1 installment with full amount" do
-    form = CardPurchaseForm.new(
-      user: @user, card: @card, description: "Camiseta",
-      total_amount: 89.90, installments_count: 1,
-      purchased_on: Date.new(2026, 4, 10),
-    )
+  test "purchased_on defaults to today" do
+    form = build
+
     assert form.save
-    inst = form.card_purchase.installments.first
-    assert_equal 89.90.to_d, inst.amount
-    assert_equal 1, inst.number
-  end
-
-  test "fails when card has no best_day configured" do
-    card_without_best_day = @user.cards.create!(name: "X", mode: :credit)
-    form = CardPurchaseForm.new(
-      user: @user, card: card_without_best_day, description: "Y",
-      total_amount: 50, installments_count: 1,
-      purchased_on: Date.current,
-    )
-    refute form.save
-    assert_includes form.errors[:card], "deve ter best_day configurado"
+    assert_equal Date.current, form.card_purchase.purchased_on
   end
 
   test "validates required fields" do
-    form = CardPurchaseForm.new
-    refute form.save
-    assert form.errors[:user].any?
-    assert form.errors[:card].any?
+    form = CardPurchaseForm.new(user: @user, card: @card)
+
+    assert_not form.save
     assert form.errors[:description].any?
     assert form.errors[:total_amount].any?
-    assert form.errors[:installments_count].any?
-    assert form.errors[:purchased_on].any?
   end
 
-  test "skips closed cycles when placing first installment" do
-    # Abril tá fechado → 1ª parcela pula pra maio.
-    @user.cycles.create!(reference_month: Date.new(2026, 4, 1), closed_at: Time.current)
+  test "validates paid installments range" do
+    form = build(installments_count: 3, installments_paid: 3)
 
-    form = CardPurchaseForm.new(
-      user: @user, card: @card, description: "X",
-      total_amount: 300, installments_count: 3,
-      purchased_on: Date.new(2026, 4, 28),
-    )
-    assert form.save
-
-    expected = [Date.new(2026, 5, 1), Date.new(2026, 6, 1), Date.new(2026, 7, 1)]
-    assert_equal expected, form.card_purchase.installments.order(:number).pluck(:due_month)
-  end
-
-  test "skips multiple consecutive closed cycles" do
-    @user.cycles.create!(reference_month: Date.new(2026, 4, 1), closed_at: Time.current)
-    @user.cycles.create!(reference_month: Date.new(2026, 5, 1), closed_at: Time.current)
-
-    form = CardPurchaseForm.new(
-      user: @user, card: @card, description: "X",
-      total_amount: 100, installments_count: 1,
-      purchased_on: Date.new(2026, 4, 28),
-    )
-    assert form.save
-    assert_equal Date.new(2026, 6, 1), form.card_purchase.installments.first.due_month
-  end
-
-  test "validates positive total and installments_count" do
-    form = CardPurchaseForm.new(
-      user: @user, card: @card, description: "X",
-      total_amount: 0, installments_count: 0,
-      purchased_on: Date.current,
-    )
-    refute form.save
-    assert form.errors[:total_amount].any?
-    assert form.errors[:installments_count].any?
+    assert_not form.save
+    assert form.errors[:installments_paid].any?
   end
 end
