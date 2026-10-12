@@ -56,18 +56,26 @@ export default class extends Controller {
 
   // ---- 1. Renda ----
 
+  // Salva ao sair do campo (change) e pelo botão "Salvar".
   async saveIncome(event) {
-    event.preventDefault()
+    event?.preventDefault()
+    await this.persistIncome()
+  }
+
+  // Grava o valor digitado se ele for diferente do salvo. Devolve false se
+  // o valor é inválido ou o servidor recusou.
+  async persistIncome() {
     const amount = parseFloat(this.incomeTarget.value)
-    if (!Number.isFinite(amount) || amount < 0) return
+    if (!Number.isFinite(amount) || amount < 0) return false
+    if (amount === Number(this.cycle.expected_income)) return true
 
     this.incomeSubmitTarget.disabled = true
     try {
       const data = await this.send("PATCH", "/api/cycles/current", { expected_income: amount })
-      if (data) {
-        this.cycle = { ...this.cycle, expected_income: data.cycle.expected_income }
-        this.renderSummary()
-      }
+      if (!data) return false
+      this.cycle = { ...this.cycle, expected_income: data.cycle.expected_income }
+      this.renderSummary()
+      return true
     } finally {
       this.incomeSubmitTarget.disabled = false
     }
@@ -222,6 +230,12 @@ export default class extends Controller {
   }
 
   async turn() {
+    // Renda digitada e não salva entra antes de virar: o retrato é imutável.
+    if (!(await this.persistIncome())) {
+      alert("Confira o valor de A receber antes de virar.")
+      return
+    }
+
     const pending = this.pendingItems()
     const message = pending.length > 0
       ? `Ainda falta:\n• ${pending.join("\n• ")}\n\nVirar o ciclo mesmo assim?`
