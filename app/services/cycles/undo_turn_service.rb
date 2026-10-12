@@ -17,6 +17,9 @@ module Cycles
       return "já tem conta fixa paga no ciclo novo" if payments_of(open).where.not(paid_at: nil).exists?
       return "já tem cartão conferido no ciclo novo" if open.card_checks.exists?
       return "já tem parcela antecipada para o ciclo novo" if installments_of(open).where.not(original_cycle_number: nil).exists?
+      return "a renda do ciclo novo foi alterada" if open.expected_income != last.expected_income
+      return "já tem conta fixa criada depois da virada" if @user.fixed_expenses.where("fixed_expenses.created_at > ?", open.started_at).exists?
+      return "já tem conta fixa com valor ajustado no ciclo novo" if adjusted_payments_of(open).exists?
 
       nil
     end
@@ -45,6 +48,12 @@ module Cycles
 
     def payments_of(cycle)
       FixedExpensePayment.where(fixed_expense_id: @user.fixed_expenses.select(:id), cycle_number: cycle.number)
+    end
+
+    # Pagamento cujo valor no ciclo difere do valor da conta (ex.: zerado
+    # porque não aconteceu) — desfazer apagaria esse ajuste.
+    def adjusted_payments_of(cycle)
+      payments_of(cycle).joins(:fixed_expense).where("fixed_expense_payments.amount <> fixed_expenses.amount")
     end
 
     def installments_of(cycle)

@@ -50,6 +50,34 @@ class Cycles::UndoTurnServiceTest < ActiveSupport::TestCase
     assert_raises(Cycles::UndoTurnService::NotAllowed) { undo! }
   end
 
+  test "blocked once the income of the new cycle is changed" do
+    @second.update!(expected_income: 6000)
+
+    error = assert_raises(Cycles::UndoTurnService::NotAllowed) { undo! }
+    assert_match "renda", error.message
+  end
+
+  test "blocked once a fixed expense amount is adjusted in the new cycle" do
+    @fixed.payments.find_by!(cycle_number: @second.number).update!(amount: 0)
+
+    assert_raises(Cycles::UndoTurnService::NotAllowed) { undo! }
+  end
+
+  test "blocked once a fixed expense is created after the turn" do
+    travel 1.second
+    @user.fixed_expenses.create!(name: "Academia", amount: 100)
+
+    error = assert_raises(Cycles::UndoTurnService::NotAllowed) { undo! }
+    assert_match "conta fixa", error.message
+    assert @first.reload.closed?
+  end
+
+  test "blocked once an installment is prepaid into the new cycle" do
+    Purchases::PrepayService.new(card_purchase: @user.card_purchases.first).call
+
+    assert_raises(Cycles::UndoTurnService::NotAllowed) { undo! }
+  end
+
   test "not allowed when there is no previous turn" do
     fresh = User.create!(email: "fresh@finansheet.local", password: "secret123")
 
