@@ -19,13 +19,13 @@ class FixedExpense < ApplicationRecord
 
   # Espelha a check constraint do banco com mensagens amigáveis.
   def installments_consistency
-    if installments_count.blank? && start_month.blank?
+    if installments_count.blank? && start_cycle_number.blank?
       errors.add(:installments_paid, "deve ser 0 em conta recorrente") if installments_paid.to_i.positive?
       return
     end
 
-    if installments_count.blank? || start_month.blank?
-      errors.add(:base, "informe total de parcelas e mês da próxima parcela, ou deixe ambos vazios")
+    if installments_count.blank? || start_cycle_number.blank?
+      errors.add(:base, "informe total de parcelas e ciclo da próxima parcela, ou deixe ambos vazios")
       return
     end
 
@@ -34,7 +34,7 @@ class FixedExpense < ApplicationRecord
     end
 
     paid = installments_paid.to_i
-    if paid < 0 || (installments_count.present? && paid >= installments_count.to_i)
+    if paid < 0 || paid >= installments_count.to_i
       errors.add(:installments_paid, "deve estar entre 0 e #{installments_count.to_i - 1}")
     end
   end

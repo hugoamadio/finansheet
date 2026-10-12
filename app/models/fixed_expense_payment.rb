@@ -4,9 +4,9 @@ class FixedExpensePayment < ApplicationRecord
   belongs_to :fixed_expense
   belongs_to :cycle, optional: true
 
-  validates :amount,          numericality: { greater_than: 0 }
-  validates :reference_month, presence: true,
-                              uniqueness: { scope: :fixed_expense_id }
+  validates :amount,       numericality: { greater_than_or_equal_to: 0 }
+  validates :cycle_number, presence: true,
+                           uniqueness: { scope: :fixed_expense_id }
 
   def closed?
     cycle_id.present?

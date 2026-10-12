@@ -2,11 +2,11 @@ class FixedExpensePaymentsController < ApiController
   before_action :load_payment
 
   # PATCH /api/fixed_expense_payments/:id
-  # Aceita: amount (edição pontual do mês) e/ou paid (toggle).
-  # Recusa se o payment está em ciclo fechado — histórico é imutável.
+  # Aceita: amount (edição pontual no ciclo, inclusive 0) e/ou paid (toggle).
+  # Recusa fora do ciclo aberto — fechados são imutáveis e futuros ainda não chegaram.
   def update
-    if @payment.closed?
-      render json: { errors: ["payment em ciclo fechado é imutável"] },
+    unless @payment.cycle_number == current_user.open_cycle.number
+      render json: { errors: ["só dá para alterar contas do ciclo aberto"] },
              status: :unprocessable_entity
       return
     end
@@ -42,6 +42,7 @@ class FixedExpensePaymentsController < ApiController
       expense_id:   p.fixed_expense_id,
       amount:       p.amount.to_f,
       paid_at:      p.paid_at,
+      cycle_number: p.cycle_number,
       cycle_closed: p.closed?,
     }
   end
