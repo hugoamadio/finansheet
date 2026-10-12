@@ -68,6 +68,13 @@ class CyclesControllerTest < ActionDispatch::IntegrationTest
     assert_equal 1, JSON.parse(response.body)["cycle"]["number"]
   end
 
+  test "GET index includes the next 6 cycles" do
+    get "/api/cycles", headers: @auth, as: :json
+
+    upcoming = JSON.parse(response.body)["upcoming"]
+    assert_equal (2..7).to_a, upcoming.map { |row| row["number"] }
+  end
+
   private
 
   def buy(total)

@@ -7,6 +7,7 @@ class CyclesController < ApiController
     render json: {
       open:     serialize_open(open),
       closed:   current_user.cycles.closed.order(number: :desc).map { |c| serialize_closed(c) },
+      upcoming: Cycles::Projection.new(user: current_user).call.map { |row| serialize_projection(row) },
       can_undo: Cycles::UndoTurnService.new(user: current_user).blocker.nil?,
     }
   end
@@ -66,6 +67,17 @@ class CyclesController < ApiController
       third_party:    cycle.total_third_party.to_f,
       fixed_expenses: cycle.total_fixed_expenses.to_f,
       balance:        (cycle.total_income - cycle.total_own_cards - cycle.total_fixed_expenses).to_f,
+    }
+  end
+
+  def serialize_projection(row)
+    {
+      number:          row.number,
+      own_cards:       row.own_cards.to_f,
+      third_party:     row.third_party.to_f,
+      fixed_expenses:  row.fixed_expenses.to_f,
+      expected_income: row.expected_income.to_f,
+      balance:         row.balance.to_f,
     }
   end
 end
