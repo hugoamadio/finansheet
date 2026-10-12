@@ -1,0 +1,17 @@
+<% content_for :title, "FinanSheet — Ciclos" %>
+
+<section class="cycles-page" data-controller="cycles-page">
+  <header class="cards-page__header">
+    <h1 class="cards-page__title">Ciclos</h1>
+  </header>
+
+  <h2 class="cycles-page__subtitle">Agora e próximos <small>o que já está comprometido</small></h2>
+  <div class="cycles-table-wrap">
+    <table class="cycles-table" data-cycles-page-target="upcoming"></table>
+  </div>
+
+  <h2 class="cycles-page__subtitle">Ciclos anteriores</h2>
+  <div class="cycles-table-wrap">
+    <table class="cycles-table" data-cycles-page-target="closed"></table>
+  </div>
+</section>

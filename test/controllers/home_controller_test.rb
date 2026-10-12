@@ -8,4 +8,11 @@ class HomeControllerTest < ActionDispatch::IntegrationTest
     assert_response :ok
     assert_includes response.body, 'data-controller="turn"'
   end
+
+  test "cycles page renders" do
+    get "/ciclos"
+
+    assert_response :ok
+    assert_includes response.body, 'data-controller="cycles-page"'
+  end
 end
