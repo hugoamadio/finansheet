@@ -2,11 +2,16 @@
 # seção "Conversão dos dados existentes"):
 #   - ciclos fechados, em ordem de mês, viram 1..k;
 #   - o ciclo aberto vira k+1 e corresponde ao 1º mês sem ciclo fechado a
-#     partir do mês atual;
+#     partir do mês de CONVERSION_TODAY;
 #   - parcela/pagamento aberto cai em k+1 + meses depois do mês aberto.
 # Falha (e desfaz tudo) se o total de algum ciclo fechado não bater.
 class ConvertMonthsToCycleNumbers < ActiveRecord::Migration[8.1]
   class ConversionMismatch < StandardError; end
+
+  # Dia que a conversão retrata: o último uso do app no modelo por mês.
+  # Usar a data do dia faria o resultado mudar conforme o mês em que a
+  # migration rodasse (em novembro, outubro deixaria de ser o ciclo aberto).
+  CONVERSION_TODAY = Date.parse(ENV.fetch("CONVERSION_TODAY", "2026-10-12"))
 
   # Modelos locais: a migration não pode depender das classes do app, que
   # mudam nos tasks seguintes.
@@ -86,6 +91,7 @@ class ConvertMonthsToCycleNumbers < ActiveRecord::Migration[8.1]
       if payment.cycle_id
         payment.update_columns(cycle_number: number_by_cycle_id.fetch(payment.cycle_id))
       elsif payment.reference_month < open_month
+        raise ConversionMismatch, "pagamento #{payment.id} (#{payment.reference_month}) já pago seria descartado" if payment.paid_at
         say "pagamento #{payment.id} (#{payment.reference_month}) sem ciclo e anterior ao ciclo aberto: descartado"
         payment.delete
       else
@@ -139,9 +145,9 @@ class ConvertMonthsToCycleNumbers < ActiveRecord::Migration[8.1]
     raise ConversionMismatch, "pagamento sem cycle_number" if MPayment.where(cycle_number: nil).exists?
   end
 
-  # Mesma regra do antigo User#next_open_cycle_month.
+  # Mesma regra do antigo User#next_open_cycle_month, a partir de CONVERSION_TODAY.
   def first_open_month(closed_months)
-    candidate = Date.current.beginning_of_month
+    candidate = CONVERSION_TODAY.beginning_of_month
     candidate = candidate >> 1 while closed_months.include?(candidate)
     candidate
   end
