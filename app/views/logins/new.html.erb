@@ -1,4 +1,4 @@
-<% content_for :title, "Sign in · FinanSheet" %>
+<% content_for :title, "Entrar · FinanSheet" %>
 
 <div class="login-page">
   <div class="login-card">
@@ -29,23 +29,23 @@
       <div data-login-form-target="error" class="error-message" hidden></div>
 
       <label>
-        Email
+        E-mail
         <input type="email" name="email" data-login-form-target="email" required autocomplete="email">
       </label>
 
       <label>
-        Password
+        Senha
         <input type="password" name="password" data-login-form-target="password" required autocomplete="current-password">
       </label>
 
       <label class="checkbox-label">
         <input type="checkbox" name="remember_me" data-login-form-target="rememberMe">
-        Remember me
+        Lembrar de mim
       </label>
 
-      <button type="submit" data-login-form-target="submit">Sign in</button>
+      <button type="submit" data-login-form-target="submit">Entrar</button>
 
-      <a href="#" class="forgot-password">Forgot password?</a>
+      <a href="#" class="forgot-password">Esqueci a senha</a>
 
       <p style="text-align:center; font-size: 0.875rem; color: #475569; margin-top: 1rem;">
         Não tem conta? <%= link_to "Criar conta", new_signup_path, style: "color: var(--brand); font-weight: 600;" %>

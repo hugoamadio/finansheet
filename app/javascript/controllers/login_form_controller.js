@@ -36,10 +36,10 @@ export default class extends Controller {
         return
       }
 
-      this.showError("Invalid email or password")
+      this.showError("E-mail ou senha inválidos.")
     } catch (err) {
       console.error("[login-form] /auth failed", err)
-      this.showError("Unable to reach server. Try again.")
+      this.showError("Não foi possível falar com o servidor. Tente de novo.")
     } finally {
       this.setLoading(false)
     }
@@ -58,6 +58,6 @@ export default class extends Controller {
   setLoading(loading) {
     if (!this.hasSubmitTarget) return
     this.submitTarget.disabled = loading
-    this.submitTarget.textContent = loading ? "Signing in…" : "Sign in"
+    this.submitTarget.textContent = loading ? "Entrando…" : "Entrar"
   }
 }

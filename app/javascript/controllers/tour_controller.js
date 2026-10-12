@@ -3,7 +3,7 @@ import { Controller } from "@hotwired/stimulus"
 // Tour de onboarding custom (vanilla, sem libs).
 //
 // Filosofia:
-// - 7 passos focados em CONCEITOS (fecha dia, virar ciclo, "já paguei
+// - 7 passos focados em CONCEITOS (virada, "já paguei
 //   parcelas") — não em campos óbvios. Tours longos perdem o usuário.
 // - Highlight via overlay SVG com cutout (mask) — não toca em
 //   position/z-index do alvo, então não quebra layout.
@@ -100,16 +100,12 @@ export default class extends Controller {
         passive: false,
       },
       {
-        key: "bestDay",
-        // Highlight no <label> inteiro (texto "Fecha dia (1-31)" + input) —
-        // assim o popover, mesmo cobrindo a área do input, não esconde o label.
-        target: '[data-cards-target="formModal"] label.form-field:has([data-cards-target="fieldBestDay"])',
-        focus:  '[data-cards-target="formModal"] [data-cards-target="fieldBestDay"]',
-        // placement right: popover sai do dialog pela direita, sem cobrir o
-        // submit nem o label.
+        key: "cardForm",
+        target: '[data-cards-target="formModal"] label.form-field:has([data-cards-target="fieldName"])',
+        focus:  '[data-cards-target="formModal"] [data-cards-target="fieldName"]',
         placement: "right",
-        title: "O campo que faz toda a diferença",
-        body: "<strong>Fecha dia</strong> decide em qual fatura cada compra cai: <em>até</em> o dia, vai pra fatura do mês; <em>depois</em>, escapa pro mês seguinte.",
+        title: "Seu cartão",
+        body: "Dê um nome e uma cor. <strong>Fecha dia</strong> e <strong>vence dia</strong> são opcionais: servem só para você conferir a fatura na virada.",
         advanceOn: "card:created",
         passive: false,
       },
@@ -142,18 +138,18 @@ export default class extends Controller {
         // posiciona o popover à direita da sidebar, sem cobrir cartões.
         anchor: ".sidebar-cycle",
         placement: "right",
-        title: "Sua visão do mês",
-        body: "Tudo que entra (A receber) e sai (cartões + contas fixas) vira um saldo projetado aqui. Sem definir o <em>A receber</em>, o saldo fica zero.",
+        title: "Sua visão do ciclo",
+        body: "Tudo que entra (A receber) e sai (seus cartões + contas fixas) vira a <strong>sobra</strong> do ciclo aqui. Compras de outras pessoas aparecem à parte.",
         onEnter: () => this.openMobileSidebarIfNeeded(),
         passive: true,
       },
       {
         key: "closeCycle",
-        target: '[data-cards-target="closeCycleButton"]',
-        title: "No fim do mês",
-        body: "Com tudo pago, clique em Virar Ciclo. O mês fica <em>imutável</em> no histórico e o próximo abre limpo.",
+        target: '[data-cards-target="turnButton"]',
+        title: "No dia em que receber",
+        body: "Clique em <strong>Virar ciclo</strong>: a tela de virada mostra o que conferir e pagar antes de abrir o ciclo novo, limpo.",
         // Fecha o drawer mobile aberto no passo 6 (senão cobre o
-        // botão Virar Ciclo no header).
+        // botão Virar ciclo no header).
         onEnter: () => this.closeMobileSidebarIfOpen(),
         passive: true,
         last: true,
