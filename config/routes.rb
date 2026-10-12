@@ -37,6 +37,8 @@ Rails.application.routes.draw do
     patch "cycles/current"      => "cycles#update_current"
     post  "cycles/current/turn" => "cycles#turn"
     post  "cycles/last/undo"    => "cycles#undo"
+    put    "cycles/current/cards/:card_id/check" => "cycle_card_checks#create"
+    delete "cycles/current/cards/:card_id/check" => "cycle_card_checks#destroy"
 
     resources :fixed_expenses, only: [:index, :create, :update, :destroy]
     resources :fixed_expense_payments, only: [:update]
