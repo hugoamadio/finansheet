@@ -33,8 +33,9 @@ Rails.application.routes.draw do
     end
 
 
-    get "incomes" => "incomes#show"
-    put "incomes" => "incomes#upsert"
+    get   "cycles"              => "cycles#index"
+    patch "cycles/current"      => "cycles#update_current"
+    post  "cycles/current/turn" => "cycles#turn"
 
     resources :fixed_expenses, only: [:index, :create, :update, :destroy]
     resources :fixed_expense_payments, only: [:update]

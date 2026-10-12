@@ -28,7 +28,6 @@ class User < ApplicationRecord
   has_many :cycles,         dependent: :restrict_with_exception
   has_many :fixed_expenses, dependent: :destroy
   has_many :card_purchases, dependent: :restrict_with_exception
-  has_many :incomes,        dependent: :destroy
 
   # Resolve um User a partir do hash que o OmniAuth devolve no callback do
   # provider (ex: Google). Estratégia em 3 tentativas, em ordem:
