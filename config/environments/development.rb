@@ -79,4 +79,8 @@ Rails.application.configure do
   if ENV["RAILS_LOG_TO_STDOUT"].present?
     config.logger = ActiveSupport::TaggedLogging.logger(STDOUT)
   end
+
+  # Libera os nomes do dockname (ex.: app.finansheet.localhost). O ".localhost" padrão
+  # do Rails só aceita um nível de subdomínio.
+  config.hosts << /([a-z0-9-]+\.)+localhost/i
 end
