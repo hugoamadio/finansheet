@@ -173,18 +173,24 @@
         <input type="text" name="description" placeholder="Ex.: Celular novo" required data-cards-target="purchaseFieldDescription">
       </label>
 
+      <label class="form-field form-field--inline">
+        <input type="checkbox" data-cards-target="purchaseFieldRefund" data-action="change->cards#togglePurchaseRefund">
+        É estorno (crédito que o banco devolveu)
+        <span class="form-field__hint" data-controller="popover" data-popover-text-value="Use quando o banco devolve dinheiro na fatura, como numa devolução de compra. Informe o valor positivo: ele entra à vista neste ciclo e abate do total do cartão.">ⓘ</span>
+      </label>
+
       <div class="form-row">
         <label class="form-field">
           Valor total (R$)
           <input type="number" step="0.01" min="0.01" name="total_amount" required data-cards-target="purchaseFieldTotal" data-action="input->cards#updatePurchasePreview">
         </label>
-        <label class="form-field">
+        <label class="form-field" data-cards-target="purchaseFieldInstallmentsWrapper">
           Parcelas
           <input type="number" min="1" max="48" value="1" name="installments_count" required data-cards-target="purchaseFieldInstallments" data-action="input->cards#updatePurchasePreview">
         </label>
       </div>
 
-      <label class="form-field form-field--inline">
+      <label class="form-field form-field--inline" data-cards-target="purchaseFieldHasPaidWrapper">
         <input type="checkbox" data-cards-target="purchaseFieldHasPaid" data-action="change->cards#togglePurchasePaid">
         Já paguei algumas parcelas dessa compra
         <span class="form-field__hint" data-controller="popover" data-popover-text-value="Marque se você já pagou parcelas antes de cadastrar. O sistema cadastra só as que faltam, começando pela próxima (ex.: 5ª/6) neste ciclo. O valor total e a quantidade de parcelas continuam sendo da compra inteira.">ⓘ</span>
@@ -195,7 +201,7 @@
         <input type="number" min="1" max="48" data-cards-target="purchaseFieldPaidCount" data-action="input->cards#updatePurchasePreview">
       </label>
 
-      <label class="form-field">
+      <label class="form-field" data-cards-target="purchaseFieldThirdPartyWrapper">
         De outra pessoa? <span style="opacity:0.6;font-weight:400">(nome; vazio se a compra é sua)</span>
         <input type="text" list="third-party-names" placeholder="Ex.: Mãe" data-cards-target="purchaseFieldThirdParty">
         <datalist id="third-party-names" data-cards-target="thirdPartyNames"></datalist>

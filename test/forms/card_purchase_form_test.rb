@@ -72,4 +72,30 @@ class CardPurchaseFormTest < ActiveSupport::TestCase
     assert_not form.save
     assert form.errors[:installments_paid].any?
   end
+
+  test "refund is a negative one-off that lowers the card total of the open cycle" do
+    assert build(total_amount: 572, installments_count: 1).save
+    form = build(description: "Estorno Netshoes", total_amount: -83.01, installments_count: 1)
+
+    assert form.save, form.errors.full_messages.inspect
+    installment = form.card_purchase.installments.sole
+    assert_equal(-83.01.to_d, installment.amount)
+    assert_equal @open.number, installment.cycle_number
+    assert form.card_purchase.refund?
+    assert_equal 488.99.to_d, Cycles::Totals.new(user: @user, cycle_number: @open.number).call.own_cards
+  end
+
+  test "refund cannot be split in installments" do
+    form = build(total_amount: -100, installments_count: 2)
+
+    assert_not form.save
+    assert form.errors[:total_amount].any?
+  end
+
+  test "zero amount is rejected" do
+    form = build(total_amount: 0, installments_count: 1)
+
+    assert_not form.save
+    assert form.errors[:total_amount].any?
+  end
 end

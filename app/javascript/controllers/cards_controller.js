@@ -21,6 +21,7 @@ export default class extends Controller {
     "purchaseFieldDescription", "purchaseFieldTotal", "purchaseFieldInstallments",
     "purchaseFieldHasPaid", "purchaseFieldPaidWrapper", "purchaseFieldPaidCount",
     "purchaseFieldDate", "purchaseFieldThirdParty", "thirdPartyNames",
+    "purchaseFieldRefund", "purchaseFieldInstallmentsWrapper", "purchaseFieldHasPaidWrapper", "purchaseFieldThirdPartyWrapper",
     "purchasePreview",
     "cycleLabel", "prevButton", "nextButton", "statusTag", "turnButton", "turnLabel",
     "notice", "noticeText",
@@ -154,6 +155,7 @@ export default class extends Controller {
     if (inst.third_party_name) tags.push(`<span class="item-tag item-tag--person">${escapeHtml(inst.third_party_name)}</span>`)
     if (inst.prepaid)          tags.push(`<span class="item-tag">quitada</span>`)
     if (inst.cancelled)        tags.push(`<span class="item-tag">cancelada</span>`)
+    if (inst.refund)           tags.push(`<span class="item-tag">estorno</span>`)
 
     const label = document.createElement("span")
     label.className = "card-item__item-label"
@@ -402,8 +404,8 @@ export default class extends Controller {
     this.purchaseFieldPaidWrapperTarget.hidden = true
     this.purchaseFieldPaidCountTarget.value = ""
     this.purchaseFieldThirdPartyTarget.value = ""
-
-    this.updatePurchasePreview()
+    this.purchaseFieldRefundTarget.checked = false
+    this.togglePurchaseRefund()
     this.purchaseModalTarget.showModal()
     this.purchaseFieldDescriptionTarget.focus()
     this.loadKnownNames()
@@ -431,6 +433,23 @@ export default class extends Controller {
     this.updatePurchasePreview()
   }
 
+  // Estorno é crédito à vista e sempre do próprio usuário: esconde parcelas,
+  // "já paguei" e "de outra pessoa".
+  togglePurchaseRefund() {
+    const on = this.purchaseFieldRefundTarget.checked
+    this.purchaseFieldInstallmentsWrapperTarget.hidden = on
+    this.purchaseFieldHasPaidWrapperTarget.hidden = on
+    this.purchaseFieldThirdPartyWrapperTarget.hidden = on
+    if (on) {
+      this.purchaseFieldInstallmentsTarget.value = "1"
+      this.purchaseFieldHasPaidTarget.checked = false
+      this.purchaseFieldThirdPartyTarget.value = ""
+      this.togglePurchasePaid()
+    } else {
+      this.updatePurchasePreview()
+    }
+  }
+
   closePurchase() {
     this.purchaseModalTarget.close()
   }
@@ -445,6 +464,12 @@ export default class extends Controller {
 
     if (!total || !count || count < 1) {
       this.purchasePreviewTarget.hidden = true
+      return
+    }
+
+    if (this.purchaseFieldRefundTarget.checked) {
+      this.purchasePreviewTarget.innerHTML = `<strong>Crédito de ${formatBRL(total)}</strong> — abate do cartão neste ciclo`
+      this.purchasePreviewTarget.hidden = false
       return
     }
 
@@ -485,7 +510,7 @@ export default class extends Controller {
 
     const payload = {
       description:        this.purchaseFieldDescriptionTarget.value.trim(),
-      total_amount:       parseFloat(this.purchaseFieldTotalTarget.value),
+      total_amount:       parseFloat(this.purchaseFieldTotalTarget.value) * (this.purchaseFieldRefundTarget.checked ? -1 : 1),
       installments_count: installmentsCount,
       installments_paid:  installmentsPaid,
       purchased_on:       this.purchaseFieldDateTarget.value || null,

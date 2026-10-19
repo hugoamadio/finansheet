@@ -11,9 +11,10 @@ class CardPurchaseForm
   validates :user,         presence: true
   validates :card,         presence: true
   validates :description,  presence: true
-  validates :total_amount,       presence: true, numericality: { greater_than: 0, allow_nil: true }
+  validates :total_amount,       presence: true, numericality: { other_than: 0, allow_nil: true }
   validates :installments_count, presence: true, numericality: { greater_than: 0, only_integer: true, allow_nil: true }
   validate :installments_paid_in_range
+  validate :refund_in_one_installment
 
   # A próxima parcela em aberto (installments_paid + 1) cai sempre no ciclo
   # aberto, e as seguintes um ciclo depois da outra. purchased_on é só
@@ -47,6 +48,13 @@ class CardPurchaseForm
     return if paid >= 0 && paid < installments_count.to_i
 
     errors.add(:installments_paid, "deve ser entre 0 e #{installments_count.to_i - 1}")
+  end
+
+  # Estorno (valor negativo) é crédito que cai de uma vez no ciclo aberto.
+  def refund_in_one_installment
+    return unless total_amount.to_d.negative? && installments_count.to_i != 1
+
+    errors.add(:total_amount, "de estorno deve ser à vista (1 parcela)")
   end
 
   def paid_count

@@ -53,13 +53,15 @@ export default class extends Controller {
     const open  = cycleStatus === "open"
     const items = []
     if (open && inst.editable) {
-      items.push(["Editar", () => this.emit("purchase:edit-request")])
+      if (!inst.refund) items.push(["Editar", () => this.emit("purchase:edit-request")])
       items.push(["Apagar", () => this.emit("purchase:remove-request"), "danger"])
     }
     if (open && inst.can_prepay)      items.push(["Quitar o restante", () => this.prepay()])
     if (open && inst.can_undo_prepay) items.push(["Desfazer quitação", () => this.call("DELETE", "prepay")])
     if (open && inst.cancel_from)     items.push(["Cancelar o restante…", () => this.openCancel()])
-    items.push([inst.third_party_name ? "Mudar a pessoa…" : "De outra pessoa…", () => this.openThirdParty()])
+    if (!inst.refund) items.push([inst.third_party_name ? "Mudar a pessoa…" : "De outra pessoa…", () => this.openThirdParty()])
+    // Estorno em ciclo fechado não tem ação nenhuma.
+    if (items.length === 0) return
 
     this.menuTarget.innerHTML = ""
     for (const [label, action, variant] of items) {

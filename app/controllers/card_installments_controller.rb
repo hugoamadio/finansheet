@@ -52,6 +52,7 @@ class CardInstallmentsController < ApiController
       third_party_name:      purchase.third_party_name,
       reimbursed:            installment.reimbursed_at.present?,
       cancelled:             purchase.cancelled_at.present?,
+      refund:                purchase.refund?,
       editable:              flags.editable,
       can_prepay:            flags.can_prepay,
       can_undo_prepay:       flags.can_undo_prepay,
