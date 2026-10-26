@@ -1,7 +1,8 @@
 class CardPurchaseForm
   include ActiveModel::Model
 
-  attr_accessor :user, :card, :description, :total_amount, :installments_count, :installments_paid, :third_party_name
+  attr_accessor :user, :card, :description, :total_amount, :installments_count, :installments_paid, :third_party_name,
+                :third_party_percent
   attr_reader :purchased_on, :card_purchase
 
   def purchased_on=(value)
@@ -32,6 +33,7 @@ class CardPurchaseForm
         installments_paid: paid_count,
         purchased_on:      purchased_on || Date.current,
         third_party_name:,
+        third_party_percent: third_party_percent.presence || 100,
       )
       Purchases::InstallmentBuilder.new(card_purchase: @card_purchase,
                                         first_cycle_number: user.open_cycle.number).build!

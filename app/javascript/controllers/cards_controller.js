@@ -152,7 +152,10 @@ export default class extends Controller {
 
     const fraction = inst.installments_count === 1 ? "x1" : `${inst.number}/${inst.installments_count}`
     const tags = []
-    if (inst.third_party_name) tags.push(`<span class="item-tag item-tag--person">${escapeHtml(inst.third_party_name)}</span>`)
+    if (inst.third_party_name) {
+      const share = inst.third_party_percent < 100 ? ` · ${inst.third_party_percent === 50 ? "metade" : `${inst.third_party_percent}%`}` : ""
+      tags.push(`<span class="item-tag item-tag--person">${escapeHtml(inst.third_party_name)}${share}</span>`)
+    }
     if (inst.prepaid)          tags.push(`<span class="item-tag">quitada</span>`)
     if (inst.cancelled)        tags.push(`<span class="item-tag">cancelada</span>`)
     if (inst.refund)           tags.push(`<span class="item-tag">estorno</span>`)

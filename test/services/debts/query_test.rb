@@ -27,6 +27,23 @@ module Debts
       assert_empty Debts::Query.new(user: @user).call
     end
 
+    test "until_cycle also counts installments that fall up to that future cycle" do
+      buy("Mãe", 300, count: 3)
+
+      debt = Debts::Query.new(user: @user, until_cycle: @open.number + 1).call.first
+
+      assert_equal 200.to_d, debt.total
+      assert_equal [@open.number, @open.number + 1], debt.items.map(&:cycle_number)
+    end
+
+    test "a split purchase owes only the other person's share" do
+      buy("Beatriz", 56.99, percent: 50)
+
+      debt = Debts::Query.new(user: @user).call.first
+      assert_equal "Beatriz", debt.name
+      assert_equal 28.5.to_d, debt.total
+    end
+
     test "known_names keeps the first spelling of each person" do
       buy("Mãe", 10)
       buy("mae", 10)
@@ -49,9 +66,9 @@ module Debts
 
     private
 
-    def buy(name, total, count: 1)
+    def buy(name, total, count: 1, percent: nil)
       form = CardPurchaseForm.new(user: @user, card: @card, description: "Compra #{name}", total_amount: total,
-                                  installments_count: count, third_party_name: name)
+                                  installments_count: count, third_party_name: name, third_party_percent: percent)
       form.save || raise(form.errors.full_messages.inspect)
       form.card_purchase
     end

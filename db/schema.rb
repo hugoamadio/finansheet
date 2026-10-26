@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_10_12_000003) do
+ActiveRecord::Schema[8.1].define(version: 2026_10_26_000001) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pgcrypto"
@@ -24,6 +24,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_12_000003) do
     t.integer "installments_paid", default: 0, null: false
     t.date "purchased_on", null: false
     t.text "third_party_name"
+    t.integer "third_party_percent", default: 100, null: false
     t.decimal "total_amount", precision: 12, scale: 2, null: false
     t.datetime "updated_at", null: false
     t.uuid "user_id", null: false
@@ -31,6 +32,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_12_000003) do
     t.index ["user_id"], name: "index_card_purchases_on_user_id"
     t.check_constraint "installments_count >= 1", name: "card_purchases_installments_count_positive"
     t.check_constraint "installments_paid >= 0 AND installments_paid < installments_count", name: "card_purchases_installments_paid_lt_count"
+    t.check_constraint "third_party_percent >= 1 AND third_party_percent <= 100", name: "card_purchases_third_party_percent_range"
   end
 
   create_table "cards", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|

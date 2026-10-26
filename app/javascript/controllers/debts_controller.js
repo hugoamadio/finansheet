@@ -3,27 +3,39 @@ import { Controller } from "@hotwired/stimulus"
 // "Me devem" na sidebar (GET /api/debts). Cada pessoa abre a lista de
 // parcelas; "devolveu" marca uma parcela, "Devolveu tudo" marca todas
 // (POST /api/debts/reimburse). Recarrega em "debts:changed" e
-// "purchase:changed".
+// "purchase:changed". Segue o ciclo da tela ("cycle:summary-update"): na
+// prévia soma também as parcelas que caem até aquele ciclo.
 export default class extends Controller {
-  static targets = ["root", "list"]
+  static targets = ["root", "list", "hint"]
 
   connect() {
     this.debts = []
     this.openPeople = new Set()
+    this.previewCycle = null
     this.onChanged = () => this.fetchDebts()
-    window.addEventListener("debts:changed",    this.onChanged)
-    window.addEventListener("purchase:changed", this.onChanged)
+    this.onCycle = (event) => {
+      const { cycleNumber, status } = event.detail ?? {}
+      const previewCycle = status === "upcoming" ? cycleNumber : null
+      if (previewCycle === this.previewCycle) return
+      this.previewCycle = previewCycle
+      this.fetchDebts()
+    }
+    window.addEventListener("debts:changed",        this.onChanged)
+    window.addEventListener("purchase:changed",     this.onChanged)
+    window.addEventListener("cycle:summary-update", this.onCycle)
     this.fetchDebts()
   }
 
   disconnect() {
-    window.removeEventListener("debts:changed",    this.onChanged)
-    window.removeEventListener("purchase:changed", this.onChanged)
+    window.removeEventListener("debts:changed",        this.onChanged)
+    window.removeEventListener("purchase:changed",     this.onChanged)
+    window.removeEventListener("cycle:summary-update", this.onCycle)
   }
 
   async fetchDebts() {
     try {
-      const resp = await this.authFetch("/api/debts")
+      const url = this.previewCycle ? `/api/debts?cycle=${this.previewCycle}` : "/api/debts"
+      const resp = await this.authFetch(url)
       if (!resp.ok) throw new Error(`GET /api/debts falhou: ${resp.status}`)
       this.debts = (await resp.json()).debts ?? []
       this.render()
@@ -35,6 +47,7 @@ export default class extends Controller {
 
   render() {
     this.rootTarget.hidden = this.debts.length === 0
+    this.hintTarget.hidden = !this.previewCycle
     this.listTarget.innerHTML = this.debts.map((debt, index) => `
       <li>
         <button type="button" class="sidebar-debts__toggle" data-action="debts#toggle" data-index="${index}">

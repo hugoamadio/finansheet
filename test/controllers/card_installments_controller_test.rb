@@ -24,6 +24,19 @@ class CardInstallmentsControllerTest < ActionDispatch::IntegrationTest
     assert(body["installments"].all? { |i| i.key?("can_prepay") && i.key?("cancel_from") })
   end
 
+  test "a split purchase counts only the user's share as own" do
+    buy(56.99, third_party_name: "Beatriz", third_party_percent: 50)
+
+    get "/api/cards/#{@card.id}/installments", headers: @auth, as: :json
+
+    body = JSON.parse(response.body)
+    assert_equal 206.99, body["cycle_total"]
+    assert_equal 128.49, body["cycle_total_own"]
+    split = body["installments"].find { |i| i["third_party_name"] == "Beatriz" }
+    assert_equal 50, split["third_party_percent"]
+    assert_equal 28.5, split["third_party_amount"]
+  end
+
   test "lists a future cycle" do
     get "/api/cards/#{@card.id}/installments?cycle=#{@open.number + 1}", headers: @auth, as: :json
 
@@ -34,9 +47,9 @@ class CardInstallmentsControllerTest < ActionDispatch::IntegrationTest
 
   private
 
-  def buy(total, count: 1, third_party_name: nil)
+  def buy(total, count: 1, third_party_name: nil, third_party_percent: nil)
     form = CardPurchaseForm.new(user: @user, card: @card, description: "X", total_amount: total,
-                                installments_count: count, third_party_name:)
+                                installments_count: count, third_party_name:, third_party_percent:)
     form.save || raise(form.errors.full_messages.inspect)
   end
 end

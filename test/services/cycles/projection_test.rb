@@ -28,6 +28,15 @@ class Cycles::ProjectionTest < ActiveSupport::TestCase
     assert_equal 0.to_d,    rows.third.own_cards
   end
 
+  test "splits a shared purchase between the user and the other person" do
+    buy(200, count: 2, third_party_name: "Beatriz", third_party_percent: 50)
+
+    row = Cycles::Projection.new(user: @user, count: 1).call.first
+
+    assert_equal 50.to_d, row.own_cards
+    assert_equal 50.to_d, row.third_party
+  end
+
   test "is read only" do
     @user.fixed_expenses.create!(name: "Aluguel", amount: 750)
 
@@ -36,9 +45,9 @@ class Cycles::ProjectionTest < ActiveSupport::TestCase
 
   private
 
-  def buy(total, count:, third_party_name: nil)
+  def buy(total, count:, third_party_name: nil, third_party_percent: nil)
     form = CardPurchaseForm.new(user: @user, card: @card, description: "X", total_amount: total,
-                                installments_count: count, third_party_name:)
+                                installments_count: count, third_party_name:, third_party_percent:)
     form.save || raise(form.errors.full_messages.inspect)
   end
 end

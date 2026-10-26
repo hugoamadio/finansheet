@@ -1,9 +1,15 @@
 class DebtsController < ApiController
-  # GET /api/debts — quanto cada pessoa deve + nomes já usados.
+  include CycleParam
+
+  # GET /api/debts?cycle=N — quanto cada pessoa deve + nomes já usados.
+  # Ciclo futuro (prévia) soma o que cai até ele; ciclo fechado mostra o de
+  # hoje (o que ainda não foi devolvido até o ciclo aberto).
   def index
-    query = Debts::Query.new(user: current_user)
+    until_cycle = [cycle_number_param, current_user.open_cycle.number].max
+    query = Debts::Query.new(user: current_user, until_cycle:)
 
     render json: {
+      until_cycle:,
       debts:       query.call.map { |debt| serialize(debt) },
       known_names: query.known_names,
     }

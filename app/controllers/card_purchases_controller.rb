@@ -4,14 +4,15 @@ class CardPurchasesController < ApiController
 
   def create
     form = CardPurchaseForm.new(
-      user:               current_user,
-      card:               @card,
-      description:        purchase_params[:description],
-      total_amount:       purchase_params[:total_amount],
-      installments_count: purchase_params[:installments_count],
-      installments_paid:  purchase_params[:installments_paid],
-      purchased_on:       purchase_params[:purchased_on].presence,
-      third_party_name:   purchase_params[:third_party_name],
+      user:                current_user,
+      card:                @card,
+      description:         purchase_params[:description],
+      total_amount:        purchase_params[:total_amount],
+      installments_count:  purchase_params[:installments_count],
+      installments_paid:   purchase_params[:installments_paid],
+      purchased_on:        purchase_params[:purchased_on].presence,
+      third_party_name:    purchase_params[:third_party_name],
+      third_party_percent: purchase_params[:third_party_percent],
     )
 
     if form.save
@@ -44,12 +45,14 @@ class CardPurchasesController < ApiController
            status: :unprocessable_entity
   end
 
-  # PATCH .../third_party { third_party_name: "Mãe" | "" }
-  # Marca ou desmarca compra de outra pessoa. Permitido mesmo com parcela em
-  # ciclo fechado: não muda valores, e o retrato dos ciclos fechados fica
-  # como foi gravado na virada.
+  # PATCH .../third_party { third_party_name: "Mãe" | "", third_party_percent: 100 | 50 }
+  # Marca ou desmarca compra de outra pessoa (toda ou dividida). Permitido
+  # mesmo com parcela em ciclo fechado: não muda valores, e o retrato dos
+  # ciclos fechados fica como foi gravado na virada.
   def third_party
-    @purchase.update!(third_party_name: params[:third_party_name])
+    name    = params[:third_party_name].to_s.squish.presence
+    percent = name ? (params[:third_party_percent].presence || 100) : 100
+    @purchase.update!(third_party_name: name, third_party_percent: percent)
     render json: { purchase: serialize(@purchase) }
   end
 
@@ -94,7 +97,7 @@ class CardPurchasesController < ApiController
   end
 
   def purchase_params
-    params.require(:purchase).permit(:description, :total_amount, :installments_count, :installments_paid, :purchased_on, :third_party_name)
+    params.require(:purchase).permit(:description, :total_amount, :installments_count, :installments_paid, :purchased_on, :third_party_name, :third_party_percent)
   end
 
   def update_params
@@ -103,15 +106,16 @@ class CardPurchasesController < ApiController
 
   def serialize(purchase)
     {
-      id:                 purchase.id,
-      card_id:            purchase.card_id,
-      description:        purchase.description,
-      total_amount:       purchase.total_amount,
-      installments_count: purchase.installments_count,
-      installments_paid:  purchase.installments_paid,
-      purchased_on:       purchase.purchased_on,
-      third_party_name:   purchase.third_party_name,
-      cancelled_at:       purchase.cancelled_at,
+      id:                  purchase.id,
+      card_id:             purchase.card_id,
+      description:         purchase.description,
+      total_amount:        purchase.total_amount,
+      installments_count:  purchase.installments_count,
+      installments_paid:   purchase.installments_paid,
+      purchased_on:        purchase.purchased_on,
+      third_party_name:    purchase.third_party_name,
+      third_party_percent: purchase.third_party_percent,
+      cancelled_at:        purchase.cancelled_at,
       installments: purchase.installments.order(:number).map { |i|
         { id: i.id, number: i.number, amount: i.amount, cycle_number: i.cycle_number }
       },

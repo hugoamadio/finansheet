@@ -21,6 +21,21 @@ class DebtsControllerTest < ActionDispatch::IntegrationTest
     assert_equal "Fogão", body["debts"].first["items"].first["description"]
   end
 
+  test "GET with a future cycle includes what falls until then, and a past cycle shows today" do
+    form = CardPurchaseForm.new(user: @user, card: @card, description: "TV", total_amount: 200,
+                                installments_count: 2, third_party_name: "Mãe")
+    form.save || raise(form.errors.full_messages.inspect)
+    open = @user.open_cycle.number
+
+    get "/api/debts?cycle=#{open + 1}", headers: @auth, as: :json
+    body = JSON.parse(response.body)
+    assert_equal open + 1, body["until_cycle"]
+    assert_equal 297.66, body["debts"].first["total"]
+
+    get "/api/debts?cycle=1", headers: @auth, as: :json
+    assert_equal 197.66, JSON.parse(response.body)["debts"].first["total"]
+  end
+
   test "POST reimburse marks the installments" do
     post "/api/debts/reimburse", params: { installment_ids: [@installment.id] }, headers: @auth, as: :json
 

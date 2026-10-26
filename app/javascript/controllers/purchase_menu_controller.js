@@ -12,7 +12,7 @@ export default class extends Controller {
   static targets = [
     "menu",
     "cancelDialog", "cancelSummary", "cancelFrom", "cancelSubmit",
-    "thirdPartyDialog", "thirdPartySummary", "thirdPartyInput", "thirdPartyNames", "thirdPartySubmit",
+    "thirdPartyDialog", "thirdPartySummary", "thirdPartyInput", "thirdPartyNames", "thirdPartyPercent", "thirdPartySubmit",
   ]
 
   connect() {
@@ -59,7 +59,7 @@ export default class extends Controller {
     if (open && inst.can_prepay)      items.push(["Quitar o restante", () => this.prepay()])
     if (open && inst.can_undo_prepay) items.push(["Desfazer quitação", () => this.call("DELETE", "prepay")])
     if (open && inst.cancel_from)     items.push(["Cancelar o restante…", () => this.openCancel()])
-    if (!inst.refund) items.push([inst.third_party_name ? "Mudar a pessoa…" : "De outra pessoa…", () => this.openThirdParty()])
+    if (!inst.refund) items.push([inst.third_party_name ? "Mudar a pessoa ou a divisão…" : "De outra pessoa ou dividir…", () => this.openThirdParty()])
     // Estorno em ciclo fechado não tem ação nenhuma.
     if (items.length === 0) return
 
@@ -149,6 +149,7 @@ export default class extends Controller {
     const { inst } = this.current
     this.thirdPartySummaryTarget.textContent = inst.description
     this.thirdPartyInputTarget.value = inst.third_party_name ?? ""
+    this.thirdPartyPercentTarget.value = String(inst.third_party_name ? inst.third_party_percent ?? 100 : 100)
     this.thirdPartyDialogTarget.showModal()
     this.thirdPartyInputTarget.focus()
     this.loadKnownNames()
@@ -161,7 +162,10 @@ export default class extends Controller {
   async submitThirdParty(event) {
     event.preventDefault()
     this.thirdPartySubmitTarget.disabled = true
-    const ok = await this.call("PATCH", "third_party", { third_party_name: this.thirdPartyInputTarget.value.trim() })
+    const ok = await this.call("PATCH", "third_party", {
+      third_party_name:    this.thirdPartyInputTarget.value.trim(),
+      third_party_percent: parseInt(this.thirdPartyPercentTarget.value, 10),
+    })
     this.thirdPartySubmitTarget.disabled = false
     if (ok) this.closeThirdParty()
   }

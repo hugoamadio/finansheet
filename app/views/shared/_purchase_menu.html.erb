@@ -37,8 +37,16 @@
         <input type="text" list="purchase-menu-names" placeholder="Ex.: Mãe" data-purchase-menu-target="thirdPartyInput">
         <datalist id="purchase-menu-names" data-purchase-menu-target="thirdPartyNames"></datalist>
       </label>
+      <label class="form-field" style="margin-top: 0.75rem;">
+        Quanto é dela
+        <select data-purchase-menu-target="thirdPartyPercent">
+          <option value="100">A compra toda</option>
+          <option value="50">Metade (dividimos)</option>
+        </select>
+      </label>
       <p style="margin: 0.75rem 0 0; font-size: 0.85rem; color: #64748b;">
-        Deixe vazio para voltar a ser uma compra sua. Ela continua somando no cartão, mas sai da sua sobra.
+        Deixe o nome vazio para voltar a ser uma compra sua. Ela continua somando no cartão, mas a parte da
+        outra pessoa sai da sua sobra e entra em "Me devem".
       </p>
       <div class="modal__footer" style="margin: 1rem -1.25rem -1.25rem; padding: 1rem 1.25rem;">
         <button type="button" class="btn btn--ghost" data-action="purchase-menu#closeThirdParty">Cancelar</button>

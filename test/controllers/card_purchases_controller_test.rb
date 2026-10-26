@@ -90,6 +90,18 @@ class CardPurchasesControllerTest < ActionDispatch::IntegrationTest
     assert_nil @purchase.reload.third_party_name
   end
 
+  test "PATCH third_party splits the purchase and clearing the name resets the share" do
+    patch "/api/cards/#{@card.id}/purchases/#{@purchase.id}/third_party",
+          params: { third_party_name: "Beatriz", third_party_percent: 50 }, headers: @auth, as: :json
+    assert_response :ok
+    assert_equal 50, JSON.parse(response.body)["purchase"]["third_party_percent"]
+    assert_equal [true, 50], [@purchase.reload.third_party?, @purchase.third_party_percent]
+
+    patch "/api/cards/#{@card.id}/purchases/#{@purchase.id}/third_party",
+          params: { third_party_name: "" }, headers: @auth, as: :json
+    assert_equal [nil, 100], [@purchase.reload.third_party_name, @purchase.third_party_percent]
+  end
+
   test "POST prepay and DELETE prepay" do
     post "/api/cards/#{@card.id}/purchases/#{@purchase.id}/prepay", headers: @auth, as: :json
     assert_response :ok

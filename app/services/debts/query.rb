@@ -1,6 +1,8 @@
 module Debts
   # O que outras pessoas devem: parcelas de compras de terceiros que já
-  # caíram (ciclo aberto ou anteriores) e ainda não foram devolvidas.
+  # caíram (ciclo aberto ou anteriores) e ainda não foram devolvidas. Em
+  # compra dividida, conta só a parte da pessoa. Com until_cycle (prévia),
+  # conta também as parcelas que caem até aquele ciclo.
   # Agrupa pelo nome sem diferenciar maiúsculas e acentos ("Mãe" e "mae"
   # são a mesma pessoa); o nome mostrado é o primeiro usado.
   class Query
@@ -11,8 +13,9 @@ module Debts
       I18n.transliterate(name.to_s).downcase.squish
     end
 
-    def initialize(user:)
+    def initialize(user:, until_cycle: nil)
       @user = user
+      @until_cycle = until_cycle
     end
 
     def call
@@ -37,10 +40,10 @@ module Debts
       Installment.joins(:card_purchase)
                  .where(card_purchases: { user_id: @user.id }, reimbursed_at: nil)
                  .where.not(card_purchases: { third_party_name: nil })
-                 .where(installments: { cycle_number: ..@user.open_cycle.number })
+                 .where(installments: { cycle_number: ..(@until_cycle || @user.open_cycle.number) })
                  .order("installments.cycle_number", "card_purchases.created_at")
                  .pluck("card_purchases.third_party_name", "installments.id", "card_purchases.description",
-                        "installments.number", "card_purchases.installments_count", "installments.amount",
+                        "installments.number", "card_purchases.installments_count", Installment::THIRD_PARTY_AMOUNT_SQL,
                         "installments.cycle_number")
     end
   end

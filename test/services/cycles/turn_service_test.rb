@@ -27,6 +27,16 @@ class Cycles::TurnServiceTest < ActiveSupport::TestCase
     assert_equal 5000.to_d, next_cycle.expected_income
   end
 
+  test "a split purchase counts half for the user and half for the other person" do
+    buy(100, third_party_name: "Beatriz", third_party_percent: 50)
+
+    turn!
+    closed = @open.reload
+
+    assert_equal 50.to_d, closed.total_own_cards
+    assert_equal 50.to_d, closed.total_third_party
+  end
+
   test "binds the closed cycle items and leaves future installments open" do
     purchase = buy(300, count: 3)
 
@@ -60,9 +70,9 @@ class Cycles::TurnServiceTest < ActiveSupport::TestCase
 
   private
 
-  def buy(total, count: 1, third_party_name: nil)
+  def buy(total, count: 1, third_party_name: nil, third_party_percent: nil)
     form = CardPurchaseForm.new(user: @user, card: @card, description: "X", total_amount: total,
-                                installments_count: count, third_party_name:)
+                                installments_count: count, third_party_name:, third_party_percent:)
     form.save || raise(form.errors.full_messages.inspect)
     form.card_purchase
   end

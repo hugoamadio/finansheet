@@ -94,6 +94,7 @@ button.card-item__more {
 
 .sidebar-cycle__line--info { opacity: 0.75; font-style: italic; }
 
+.sidebar-debts__hint { margin: 0 0 0.4rem; font-size: 0.75rem; color: var(--sidebar-muted); }
 .sidebar-debts__list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 0.35rem; }
 .sidebar-debts__toggle {
   width: 100%;

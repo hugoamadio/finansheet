@@ -13,9 +13,11 @@ module Cycles
       installments = Installment.joins(:card_purchase)
                                 .where(card_purchases: { user_id: @user.id }, cycle_number: @cycle_number)
 
+      third_party = installments.sum(Installment::THIRD_PARTY_AMOUNT_SQL)
+
       Result.new(
-        own_cards:      installments.where(card_purchases: { third_party_name: nil }).sum(:amount),
-        third_party:    installments.where.not(card_purchases: { third_party_name: nil }).sum(:amount),
+        own_cards:      installments.sum(:amount) - third_party,
+        third_party:,
         fixed_expenses: FixedExpensePayment.joins(:fixed_expense)
                                            .where(fixed_expenses: { user_id: @user.id }, cycle_number: @cycle_number)
                                            .sum(:amount),

@@ -17,10 +17,12 @@ class CardInstallmentsController < ApiController
                          .to_a
     actions = Purchases::Actions.for(records.map(&:card_purchase).uniq, open_number:)
 
+    cycle_total = cycle_scope.sum(:amount)
+
     render json: {
       cycle:           number,
-      cycle_total:     cycle_scope.sum(:amount).to_f,
-      cycle_total_own: cycle_scope.where(card_purchases: { third_party_name: nil }).sum(:amount).to_f,
+      cycle_total:     cycle_total.to_f,
+      cycle_total_own: (cycle_total - cycle_scope.sum(Installment::THIRD_PARTY_AMOUNT_SQL)).to_f,
       future_total:    card_scope.where("installments.cycle_number > ?", number).sum(:amount).to_f,
       installments:    records.map { |i| serialize(i, actions.fetch(i.card_purchase_id)) },
     }
@@ -50,6 +52,8 @@ class CardInstallmentsController < ApiController
       purchase_total_amount: purchase.total_amount.to_f,
       purchased_on:          purchase.purchased_on,
       third_party_name:      purchase.third_party_name,
+      third_party_percent:   purchase.third_party_percent,
+      third_party_amount:    purchase.third_party_amount_of(installment.amount).to_f,
       reimbursed:            installment.reimbursed_at.present?,
       cancelled:             purchase.cancelled_at.present?,
       refund:                purchase.refund?,

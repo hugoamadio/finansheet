@@ -23,10 +23,11 @@ module Cycles
       expenses = @user.fixed_expenses.active.to_a
 
       numbers.map do |number|
+        total, third_party = sums.fetch(number, [0.to_d, 0.to_d])
         Row.new(
           number:,
-          own_cards:       sums.fetch([number, false], 0.to_d),
-          third_party:     sums.fetch([number, true], 0.to_d),
+          own_cards:       total - third_party,
+          third_party:,
           fixed_expenses:  expenses.select { |fe| FixedExpenses::EnsurePaymentsForCycle.applies?(fe, number) }
                                    .sum(0.to_d, &:amount),
           expected_income: open.expected_income,
@@ -36,12 +37,13 @@ module Cycles
 
     private
 
-    # { [cycle_number, de_terceiro?] => soma }
+    # { cycle_number => [soma, parte de terceiros] }
     def installment_sums(numbers)
       Installment.joins(:card_purchase)
                  .where(card_purchases: { user_id: @user.id }, cycle_number: numbers)
-                 .group(:cycle_number, Arel.sql("card_purchases.third_party_name IS NOT NULL"))
-                 .sum(:amount)
+                 .group(:cycle_number)
+                 .pluck(:cycle_number, Arel.sql("SUM(installments.amount)"), Arel.sql("SUM(#{Installment::THIRD_PARTY_AMOUNT_SQL})"))
+                 .to_h { |number, total, third_party| [number, [total, third_party]] }
     end
   end
 end
